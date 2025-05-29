@@ -3,7 +3,6 @@ from ttkbootstrap.constants import *
 import tkinter as tk
 from tkinter import messagebox
 from estilo import aplicar_estilo
-
 import sqlite3
 
 DB_PATH = "alba_zip_extracted/alba.sqlite"
@@ -13,25 +12,18 @@ class ContatoWindow(ttkb.Toplevel):
         super().__init__(master)
         aplicar_estilo(self)
         self.title("Cadastro de Contatos")
-        self.geometry("600x350")
+        self.geometry("800x550")
         self.resizable(False, False)
 
         frame = ttkb.Frame(self, padding=10)
         frame.pack(fill=tk.BOTH, expand=True)
 
-        # Nome do Contato with search button
         ttkb.Label(frame, text="Nome do Contato").grid(row=0, column=0, sticky=tk.W)
-        
-        # Create a frame to hold the entry and search button
         search_frame = ttkb.Frame(frame)
         search_frame.grid(row=0, column=1, columnspan=2, pady=5, sticky=tk.W+tk.E)
-        
         self.entry_nome = ttkb.Entry(search_frame, width=45)
         self.entry_nome.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        
-        # Create search button with magnifying glass icon or text
-        search_button = ttkb.Button(search_frame, text="🔍", bootstyle=INFO, 
-                                   command=self.buscar_contato, width=3)
+        search_button = ttkb.Button(search_frame, text="🔍", bootstyle=INFO, command=self.buscar_contato, width=3)
         search_button.pack(side=tk.RIGHT, padx=(5, 0))
 
         ttkb.Label(frame, text="DDD").grid(row=1, column=0, sticky=tk.W)
@@ -42,15 +34,32 @@ class ContatoWindow(ttkb.Toplevel):
         self.entry_telefone = ttkb.Entry(frame, width=30)
         self.entry_telefone.grid(row=2, column=1, pady=5)
 
-        ttkb.Button(frame, text="Salvar", command=self.salvar_contato, bootstyle=SUCCESS).grid(row=3, column=1, sticky=tk.E, pady=10)
-        ttkb.Button(frame, text="Remover", command=self.remover_contato, bootstyle=DANGER).grid(row=3, column=2, sticky=tk.W)
-        ttkb.Button(frame, text="Limpar Filtro", command=self.carregar_contatos, bootstyle=INFO).grid(row=3, column=0, sticky=tk.W, pady=10)
+        ttkb.Label(frame, text="Ramal").grid(row=3, column=0, sticky=tk.W)
+        self.entry_ramal = ttkb.Entry(frame, width=15)
+        self.entry_ramal.grid(row=3, column=1, pady=5, sticky=tk.W)
 
-        # Frame para botões de navegação
+        ttkb.Label(frame, text="DDD Celular").grid(row=4, column=0, sticky=tk.W)
+        self.entry_ddd_cel = ttkb.Entry(frame, width=10)
+        self.entry_ddd_cel.grid(row=4, column=1, pady=5, sticky=tk.W)
+
+        ttkb.Label(frame, text="Celular").grid(row=5, column=0, sticky=tk.W)
+        self.entry_celular = ttkb.Entry(frame, width=30)
+        self.entry_celular.grid(row=5, column=1, pady=5)
+
+        ttkb.Label(frame, text="Departamento").grid(row=6, column=0, sticky=tk.W)
+        self.entry_depto = ttkb.Entry(frame, width=30)
+        self.entry_depto.grid(row=6, column=1, pady=5)
+
+        ttkb.Label(frame, text="Email").grid(row=7, column=0, sticky=tk.W)
+        self.entry_email = ttkb.Entry(frame, width=30)
+        self.entry_email.grid(row=7, column=1, pady=5)
+
+        ttkb.Button(frame, text="Salvar", command=self.salvar_contato, bootstyle=SUCCESS).grid(row=8, column=1, sticky=tk.E, pady=10)
+        ttkb.Button(frame, text="Remover", command=self.remover_contato, bootstyle=DANGER).grid(row=8, column=2, sticky=tk.W)
+        ttkb.Button(frame, text="Limpar Filtro", command=self.carregar_contatos, bootstyle=INFO).grid(row=8, column=0, sticky=tk.W, pady=10)
+
         nav_frame = ttkb.Frame(self, padding=5)
         nav_frame.pack(fill=tk.X, padx=10)
-
-        # Botões de navegação
         ttkb.Button(nav_frame, text="⏮ Primeiro", command=self.ir_primeiro, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
         ttkb.Button(nav_frame, text="◀ Anterior", command=self.ir_anterior, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
         ttkb.Button(nav_frame, text="Próximo ▶", command=self.ir_proximo, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
@@ -59,11 +68,8 @@ class ContatoWindow(ttkb.Toplevel):
         self.tree = ttkb.Treeview(self, columns=("id", "nome", "ddd", "telefone"), show="headings")
         for col in self.tree["columns"]:
             self.tree.heading(col, text=col.capitalize())
-        
-        # Hide the id column
         self.tree.column("id", width=0, stretch=False)
         self.tree.heading("id", text="")
-        
         self.tree.pack(expand=True, fill="both", padx=10, pady=10)
         self.tree.bind("<ButtonRelease-1>", self.on_select)
 
@@ -77,20 +83,15 @@ class ContatoWindow(ttkb.Toplevel):
         if not nome_busca:
             self.carregar_contatos()
             return
-            
-        # Clear current treeview
         for row in self.tree.get_children():
             self.tree.delete(row)
-            
         conn = self.conectar()
         cursor = conn.cursor()
-        # Use LIKE with wildcards for partial matching
         cursor.execute("""
             SELECT id_contato, nm_contato, nr_ddd_fone, nr_telefone 
             FROM contatos 
             WHERE nm_contato LIKE ?
         """, (f'%{nome_busca}%',))
-        
         for row in cursor.fetchall():
             self.tree.insert("", "end", values=row)
         conn.close()
@@ -99,6 +100,11 @@ class ContatoWindow(ttkb.Toplevel):
         nome = self.entry_nome.get()
         ddd = self.entry_ddd.get()
         telefone = self.entry_telefone.get()
+        ramal = self.entry_ramal.get()
+        ddd_cel = self.entry_ddd_cel.get()
+        celular = self.entry_celular.get()
+        depto = self.entry_depto.get()
+        email = self.entry_email.get()
 
         if not nome or not telefone:
             messagebox.showwarning("Atenção", "Preencha todos os campos obrigatórios.")
@@ -106,7 +112,10 @@ class ContatoWindow(ttkb.Toplevel):
 
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO contatos (nm_contato, nr_ddd_fone, nr_telefone) VALUES (?, ?, ?)", (nome, ddd, telefone))
+        cursor.execute("""
+            INSERT INTO contatos (nm_contato, nr_ddd_fone, nr_telefone, nr_ramal, nr_ddd_cel, nr_celular, nm_depto, nm_email) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (nome, ddd, telefone, ramal, ddd_cel, celular, depto, email))
         conn.commit()
         conn.close()
         self.limpar_campos()
@@ -118,7 +127,6 @@ class ContatoWindow(ttkb.Toplevel):
             return
         item = self.tree.item(selecionado)
         contato_id = item["values"][0]
-
         conn = self.conectar()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM contatos WHERE id_contato = ?", (contato_id,))
@@ -131,7 +139,7 @@ class ContatoWindow(ttkb.Toplevel):
             self.tree.delete(row)
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("SELECT id_contato, nm_contato, nr_ddd_fone, nr_telefone FROM contatos")
+        cursor.execute("SELECT id_contato, nm_contato, nr_ddd_fone, nr_telefone, nr_ramal, nr_ddd_cel, nr_celular, nm_depto, nm_email FROM contatos")
         for row in cursor.fetchall():
             self.tree.insert("", "end", values=row)
         conn.close()
@@ -140,21 +148,36 @@ class ContatoWindow(ttkb.Toplevel):
         item = self.tree.item(self.tree.focus())
         if not item:
             return
-        _, nome, ddd, telefone = item["values"]
+        _, nome, ddd, telefone, ramal, ddd_cel, celular, depto, email = item["values"]
         self.entry_nome.delete(0, tk.END)
         self.entry_nome.insert(0, nome)
         self.entry_ddd.delete(0, tk.END)
         self.entry_ddd.insert(0, ddd)
         self.entry_telefone.delete(0, tk.END)
         self.entry_telefone.insert(0, telefone)
+        self.entry_ramal.delete(0, tk.END)
+        self.entry_ramal.insert(0, ramal)
+        self.entry_ddd_cel.delete(0, tk.END)
+        self.entry_ddd_cel.insert(0, ddd_cel)
+        self.entry_celular.delete(0, tk.END)
+        self.entry_celular.insert(0, celular)
+        self.entry_depto.delete(0, tk.END)
+        self.entry_depto.insert(0, depto)
+        self.entry_email.delete(0, tk.END)
+        self.entry_email.insert(0, email)
+        
 
     def limpar_campos(self):
         self.entry_nome.delete(0, tk.END)
         self.entry_ddd.delete(0, tk.END)
         self.entry_telefone.delete(0, tk.END)
-        
+        self.entry_ramal.delete(0, tk.END)
+        self.entry_ddd_cel.delete(0, tk.END)
+        self.entry_celular.delete(0, tk.END)
+        self.entry_depto.delete(0, tk.END)
+        self.entry_email.delete(0, tk.END)
+
     def ir_primeiro(self):
-        """Navega para o primeiro registro na lista"""
         items = self.tree.get_children()
         if items:
             primeiro_item = items[0]
@@ -162,9 +185,8 @@ class ContatoWindow(ttkb.Toplevel):
             self.tree.focus(primeiro_item)
             self.tree.see(primeiro_item)
             self.on_select(None)
-            
+
     def ir_ultimo(self):
-        """Navega para o último registro na lista"""
         items = self.tree.get_children()
         if items:
             ultimo_item = items[-1]
@@ -172,34 +194,28 @@ class ContatoWindow(ttkb.Toplevel):
             self.tree.focus(ultimo_item)
             self.tree.see(ultimo_item)
             self.on_select(None)
-            
+
     def ir_anterior(self):
-        """Navega para o registro anterior na lista"""
         selecionado = self.tree.selection()
         if not selecionado:
             self.ir_primeiro()
             return
-            
         items = self.tree.get_children()
         idx = items.index(selecionado[0])
-        
         if idx > 0:
             anterior = items[idx - 1]
             self.tree.selection_set(anterior)
             self.tree.focus(anterior)
             self.tree.see(anterior)
             self.on_select(None)
-            
+
     def ir_proximo(self):
-        """Navega para o próximo registro na lista"""
         selecionado = self.tree.selection()
         if not selecionado:
             self.ir_primeiro()
             return
-            
         items = self.tree.get_children()
         idx = items.index(selecionado[0])
-        
         if idx < len(items) - 1:
             proximo = items[idx + 1]
             self.tree.selection_set(proximo)

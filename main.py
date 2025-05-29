@@ -20,7 +20,8 @@ from windows.item_ordem_compra import ItemOrdemCompraWindow
 from windows.comissao import ComissaoWindow
 from windows.system_config import SystemConfigWindow
 from windows.itens_producao import ItensProducaoWindow
-
+from windows.tipo import TipoWindow
+from windows.textos import TextosWindow
 
 class App(ttkb.Window):
     def __init__(self):
@@ -51,6 +52,8 @@ class App(ttkb.Window):
                 {"label": "Produtos Fiscais", "command": self.abrir_produto_fiscal},
                 {"label": "Comissões", "command": self.abrir_comissao},
                 {"label": "Itens de Produção", "command": self.abrir_itens_producao},
+                {"label": "Tipos", "command": self.abrir_tipo},
+                {"label": "Textos", "command": self.abrir_textos},
             ],
             "Movimentação": [
                 {"label": "Ordens de Compra", "command": self.abrir_ordem_compra},
@@ -122,7 +125,11 @@ class App(ttkb.Window):
     def abrir_itens_producao(self):
         ItensProducaoWindow(self)
 
+    def abrir_tipo(self):
+        TipoWindow(self)
 
+    def abrir_textos(self):
+        TextosWindow(self)
 
 if __name__ == "__main__":
     app = App()
