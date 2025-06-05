@@ -9,34 +9,80 @@ DB_PATH = "alba_zip_extracted/alba.sqlite"
 class TipoWindow(ttkb.Toplevel):
     def __init__(self, master=None):
         super().__init__(master)
-        self.title("Cadastro de Tipos")
-        self.geometry("600x400")
+        self.title("Cadastro de Tipos de Clientes")
+        self.geometry("700x500")
         self.resizable(False, False)
 
-        frame = ttkb.Frame(self, padding=10)
-        frame.pack(fill=tk.BOTH, expand=True)
+        # Frame principal
+        main_frame = ttkb.Frame(self, padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        ttkb.Label(frame, text="ID Tipo").grid(row=0, column=0, sticky=tk.W)
-        self.entry_id = ttkb.Entry(frame, width=10)
-        self.entry_id.grid(row=0, column=1, pady=5)
+        # Barra de ferramentas no topo
+        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
 
-        ttkb.Label(frame, text="Nome do Tipo").grid(row=0, column=2, sticky=tk.W)
-        self.entry_nome = ttkb.Entry(frame, width=40)
+        # Container para os botões grudados
+        button_container = ttkb.Frame(toolbar_frame)
+        button_container.pack(side=tk.LEFT)
+
+        # Botões da barra de ferramentas com ícones
+        self.btn_novo = ttkb.Button(button_container, text="➕", command=self.novo, width=3)
+        self.btn_novo.pack(side=tk.LEFT)
+
+        self.btn_salvar = ttkb.Button(button_container, text="💾", command=self.salvar, width=3)
+        self.btn_salvar.pack(side=tk.LEFT)
+
+        self.btn_remover = ttkb.Button(button_container, text="🗑️", command=self.remover, width=3)
+        self.btn_remover.pack(side=tk.LEFT)
+
+        # Separador visual
+        separator = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+
+        # Frame para campos de entrada
+        input_frame = ttkb.Frame(main_frame)
+        input_frame.pack(fill=tk.X, pady=(0, 15))
+
+        ttkb.Label(input_frame, text="ID Tipo").grid(row=0, column=0, sticky=tk.W)
+        self.entry_id = ttkb.Entry(input_frame, width=10)
+        self.entry_id.grid(row=0, column=1, pady=5, padx=(5, 20))
+
+        ttkb.Label(input_frame, text="Nome do Tipo").grid(row=0, column=2, sticky=tk.W)
+        self.entry_nome = ttkb.Entry(input_frame, width=50)
         self.entry_nome.grid(row=0, column=3, pady=5, padx=5)
 
-        ttkb.Button(frame, text="Salvar", command=self.salvar, bootstyle=SUCCESS).grid(row=1, column=2, pady=10)
-        ttkb.Button(frame, text="Remover", command=self.remover, bootstyle=DANGER).grid(row=1, column=3)
+        # Frame para o Treeview (área expandida)
+        tree_frame = ttkb.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.tree = ttkb.Treeview(self, columns=("id_tipo", "nm_tipo"), show="headings")
+        # Treeview com colunas redimensionadas
+        self.tree = ttkb.Treeview(tree_frame, columns=("id_tipo", "nm_tipo"), show="headings", height=15)
+            
+        # Configuração das colunas - ID menor, Descrição maior
         self.tree.heading("id_tipo", text="ID")
         self.tree.heading("nm_tipo", text="Descrição")
-        self.tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.tree.column("id_tipo", width=80, minwidth=60, anchor=tk.CENTER)
+        self.tree.column("nm_tipo", width=500, minwidth=300, anchor=tk.W)
+            
+        # Scrollbar para o Treeview
+        scrollbar = ttkb.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+            
+        # Pack do Treeview e Scrollbar
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            
         self.tree.bind("<ButtonRelease-1>", self.on_select)
 
         self.carregar()
 
     def conectar(self):
         return sqlite3.connect(DB_PATH)
+
+    def novo(self):
+        """Limpa os campos para inclusão de novo registro"""
+        self.limpar()
+        self.entry_id.focus()
 
     def salvar(self):
         id_tipo = self.entry_id.get()

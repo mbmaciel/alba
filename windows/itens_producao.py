@@ -12,7 +12,7 @@ class ItensProducaoWindow(ttkb.Toplevel):
         super().__init__(master)
         aplicar_estilo(self)
         self.title("Itens de Produção (alba0009)")
-        self.geometry("1000x550")
+        self.geometry("1200x700")
         self.resizable(False, False)
         
         # Variável para armazenar o ID do item selecionado para edição
@@ -22,63 +22,88 @@ class ItensProducaoWindow(ttkb.Toplevel):
         # Lista de IDs dos itens
         self.lista_ids = []
 
-        frame = ttkb.Frame(self, padding=10)
-        frame.pack(fill=tk.BOTH, expand=True)
+        # Frame principal
+        main_frame = ttkb.Frame(self, padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # ID Ordem de Fabricação
-        ttkb.Label(frame, text="Ordem de Fabricação").grid(row=0, column=0, sticky=tk.W)
-        self.combo_of = ttkb.Combobox(frame, width=20, state="readonly")
-        self.combo_of.grid(row=0, column=1, padx=5, pady=5)
+        # Barra de ferramentas no topo
+        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
 
-        # Produto
-        ttkb.Label(frame, text="Produto").grid(row=0, column=2, sticky=tk.W)
-        self.combo_produto = ttkb.Combobox(frame, width=40, state="readonly")
-        self.combo_produto.grid(row=0, column=3, columnspan=2, padx=5, pady=5)
+        # Container para os botões grudados
+        button_container = ttkb.Frame(toolbar_frame)
+        button_container.pack(side=tk.LEFT)
 
-        # Cliente
-        ttkb.Label(frame, text="Cliente").grid(row=1, column=0, sticky=tk.W)
-        self.combo_cliente = ttkb.Combobox(frame, width=40, state="readonly")
-        self.combo_cliente.grid(row=1, column=1, columnspan=2, padx=5, pady=5)
+        # Botões da barra de ferramentas com ícones
+        self.btn_novo = ttkb.Button(button_container, text="➕", command=self.novo, width=3)
+        self.btn_novo.pack(side=tk.LEFT)
 
-        ttkb.Label(frame, text="Quantidade").grid(row=1, column=3, sticky=tk.W)
-        self.entry_qtd = ttkb.Entry(frame, width=10)
-        self.entry_qtd.grid(row=1, column=4, padx=5)
+        self.btn_salvar = ttkb.Button(button_container, text="💾", command=self.salvar, width=3)
+        self.btn_salvar.pack(side=tk.LEFT)
 
-        ttkb.Label(frame, text="Valor Unit.").grid(row=2, column=0, sticky=tk.W)
-        self.entry_unit = ttkb.Entry(frame, width=15)
-        self.entry_unit.grid(row=2, column=1, padx=5)
+        self.btn_remover = ttkb.Button(button_container, text="🗑️", command=self.remover, width=3)
+        self.btn_remover.pack(side=tk.LEFT)
 
-        ttkb.Label(frame, text="Desc. %").grid(row=2, column=2, sticky=tk.W)
-        self.entry_desc = ttkb.Entry(frame, width=10)
-        self.entry_desc.grid(row=2, column=3, padx=5)
-
-        ttkb.Label(frame, text="Total").grid(row=2, column=4, sticky=tk.W)
-        self.entry_total = ttkb.Entry(frame, width=15)
-        self.entry_total.grid(row=2, column=5, padx=5)
-
-        # Botões de ação
-        btn_frame = ttkb.Frame(frame)
-        btn_frame.grid(row=3, column=0, columnspan=6, pady=10)
-        
-        ttkb.Button(btn_frame, text="Novo", command=self.novo, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
-        ttkb.Button(btn_frame, text="Salvar", command=self.salvar, bootstyle=SUCCESS).pack(side=tk.LEFT, padx=5)
-        ttkb.Button(btn_frame, text="Remover", command=self.remover, bootstyle=DANGER).pack(side=tk.LEFT, padx=5)
+        # Separador visual
+        separator = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
 
         # Botões de navegação
-        nav_frame = ttkb.Frame(self)
-        nav_frame.pack(fill=tk.X, padx=10, pady=(5, 0))
-        
-        ttkb.Button(nav_frame, text="<<", command=self.primeiro, width=3, bootstyle=SECONDARY).pack(side=tk.LEFT, padx=2)
-        ttkb.Button(nav_frame, text="<", command=self.anterior, width=3, bootstyle=SECONDARY).pack(side=tk.LEFT, padx=2)
-        ttkb.Button(nav_frame, text=">", command=self.proximo, width=3, bootstyle=SECONDARY).pack(side=tk.LEFT, padx=2)
-        ttkb.Button(nav_frame, text=">>", command=self.ultimo, width=3, bootstyle=SECONDARY).pack(side=tk.LEFT, padx=2)
-        
+        nav_container = ttkb.Frame(toolbar_frame)
+        nav_container.pack(side=tk.LEFT, padx=(10, 0))
+
+        ttkb.Button(nav_container, text="⏮", command=self.primeiro, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="◀", command=self.anterior, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="▶", command=self.proximo, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="⏭", command=self.ultimo, width=3).pack(side=tk.LEFT)
+
         # Label para mostrar a posição atual
-        self.lbl_posicao = ttkb.Label(nav_frame, text="0/0")
+        self.lbl_posicao = ttkb.Label(nav_container, text="0/0")
         self.lbl_posicao.pack(side=tk.LEFT, padx=10)
+
+        # Frame para campos de entrada
+        input_frame = ttkb.Frame(main_frame)
+        input_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Primeira linha
+        ttkb.Label(input_frame, text="Ordem de Fabricação").grid(row=0, column=0, sticky=tk.W)
+        self.combo_of = ttkb.Combobox(input_frame, width=20, state="readonly")
+        self.combo_of.grid(row=0, column=1, padx=5, pady=5)
+
+        ttkb.Label(input_frame, text="Produto").grid(row=0, column=2, sticky=tk.W, padx=(20, 0))
+        self.combo_produto = ttkb.Combobox(input_frame, width=40, state="readonly")
+        self.combo_produto.grid(row=0, column=3, columnspan=2, padx=5, pady=5)
+
+        # Segunda linha
+        ttkb.Label(input_frame, text="Cliente").grid(row=1, column=0, sticky=tk.W)
+        self.combo_cliente = ttkb.Combobox(input_frame, width=40, state="readonly")
+        self.combo_cliente.grid(row=1, column=1, columnspan=2, padx=5, pady=5)
+
+        ttkb.Label(input_frame, text="Quantidade").grid(row=1, column=3, sticky=tk.W, padx=(20, 0))
+        self.entry_qtd = ttkb.Entry(input_frame, width=10)
+        self.entry_qtd.grid(row=1, column=4, padx=5)
+
+        # Terceira linha
+        ttkb.Label(input_frame, text="Valor Unit.").grid(row=2, column=0, sticky=tk.W)
+        self.entry_unit = ttkb.Entry(input_frame, width=15)
+        self.entry_unit.grid(row=2, column=1, padx=5)
+
+        ttkb.Label(input_frame, text="Desc. %").grid(row=2, column=2, sticky=tk.W, padx=(20, 0))
+        self.entry_desc = ttkb.Entry(input_frame, width=10)
+        self.entry_desc.grid(row=2, column=3, padx=5)
+
+        ttkb.Label(input_frame, text="Total").grid(row=2, column=4, sticky=tk.W, padx=(20, 0))
+        self.entry_total = ttkb.Entry(input_frame, width=15)
+        self.entry_total.grid(row=2, column=5, padx=5)
+
+        # Frame para o Treeview (área expandida)
+        tree_frame = ttkb.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Treeview com colunas redimensionadas
+        self.tree = ttkb.Treeview(tree_frame, columns=("id", "of", "produto", "cliente", "qtd", "unit", "total"), show="headings", height=15)
         
-        # Configurar o Treeview
-        self.tree = ttkb.Treeview(self, columns=("id", "of", "produto", "cliente", "qtd", "unit", "total"), show="headings")
+        # Configuração das colunas
         self.tree.heading("id", text="ID")
         self.tree.heading("of", text="OF")
         self.tree.heading("produto", text="PRODUTO")
@@ -96,10 +121,16 @@ class ItensProducaoWindow(ttkb.Toplevel):
         self.tree.column("unit", width=80)
         self.tree.column("total", width=100)
         
+        # Scrollbar para o Treeview
+        scrollbar = ttkb.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack do Treeview e Scrollbar
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
         # Adicionar evento de seleção
         self.tree.bind("<<TreeviewSelect>>", self.item_selecionado_evento)
-        
-        self.tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Configurar cálculo automático do total
         self.entry_qtd.bind("<KeyRelease>", self.calcular_total)

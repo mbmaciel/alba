@@ -12,15 +12,46 @@ class SystemConfigWindow(ttkb.Toplevel):
         super().__init__(master)
         aplicar_estilo(self)
         self.title("Configurações do Sistema")
-        self.geometry("850x550")
+        self.geometry("900x700")
         self.resizable(False, False)
 
         self.campos = {}
         
-        # Main container
+        # Frame principal
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
-        
+
+        # Barra de ferramentas no topo
+        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Container para os botões grudados
+        button_container = ttkb.Frame(toolbar_frame)
+        button_container.pack(side=tk.LEFT)
+
+        # Botões da barra de ferramentas com ícones
+        self.btn_novo = ttkb.Button(button_container, text="➕", command=self.novo, width=3)
+        self.btn_novo.pack(side=tk.LEFT)
+
+        self.btn_salvar = ttkb.Button(button_container, text="💾", command=self.salvar, width=3)
+        self.btn_salvar.pack(side=tk.LEFT)
+
+        self.btn_remover = ttkb.Button(button_container, text="🗑️", command=self.remover, width=3)
+        self.btn_remover.pack(side=tk.LEFT)
+
+        # Separador visual
+        separator = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+
+        # Botões de navegação
+        nav_container = ttkb.Frame(toolbar_frame)
+        nav_container.pack(side=tk.LEFT, padx=(10, 0))
+
+        ttkb.Button(nav_container, text="⏮", command=self.ir_primeiro, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
         # Create notebook with tabs for different categories
         notebook = ttkb.Notebook(main_frame)
         notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -88,11 +119,43 @@ class SystemConfigWindow(ttkb.Toplevel):
         
         # Create Other Settings section
         self._create_section(other_frame, "Outras Configurações", other_fields, 0)
+
+        # Frame para o Treeview (área expandida) - Mostra histórico de configurações
+        tree_frame = ttkb.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0))
+
+        # Label para o histórico
+        ttkb.Label(tree_frame, text="Histórico de Configurações", font=("MS Sans Serif", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
+
+        # Treeview com colunas redimensionadas
+        self.tree = ttkb.Treeview(tree_frame, columns=("id", "razao", "cnpj", "telefone", "data_config"), show="headings", height=8)
         
-        # Save Button at the bottom
-        button_frame = ttkb.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=10)
-        ttkb.Button(button_frame, text="Salvar", command=self.salvar, bootstyle=SUCCESS).pack(side=tk.RIGHT)
+        # Configuração das colunas
+        self.tree.heading("id", text="ID")
+        self.tree.heading("razao", text="Razão Social")
+        self.tree.heading("cnpj", text="CNPJ")
+        self.tree.heading("telefone", text="Telefone")
+        self.tree.heading("data_config", text="Data Configuração")
+        
+        # Hide the id column
+        self.tree.column("id", width=0, stretch=False)
+        self.tree.column("razao", width=250, minwidth=200, anchor=tk.W)
+        self.tree.column("cnpj", width=150, minwidth=120, anchor=tk.CENTER)
+        self.tree.column("telefone", width=120, minwidth=100, anchor=tk.CENTER)
+        self.tree.column("data_config", width=150, minwidth=120, anchor=tk.CENTER)
+        
+        # Scrollbar para o Treeview
+        scrollbar_tree = ttkb.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar_tree.set)
+        
+        # Pack do Treeview e Scrollbar
+        tree_container = ttkb.Frame(tree_frame)
+        tree_container.pack(fill=tk.BOTH, expand=True)
+        
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, in_=tree_container)
+        scrollbar_tree.pack(side=tk.RIGHT, fill=tk.Y, in_=tree_container)
+        
+        self.tree.bind("<ButtonRelease-1>", self.on_select)
 
         self.carregar()
 
@@ -117,7 +180,15 @@ class SystemConfigWindow(ttkb.Toplevel):
     def conectar(self):
         return sqlite3.connect(DB_PATH)
 
+    def novo(self):
+        """Limpa os campos para nova configuração"""
+        self.limpar()
+        # Focar no primeiro campo da primeira aba
+        if "nm_razao" in self.campos:
+            self.campos["nm_razao"].focus()
+
     def carregar(self):
+        # Carregar dados atuais
         conn = self.conectar()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM system LIMIT 1")
@@ -127,18 +198,168 @@ class SystemConfigWindow(ttkb.Toplevel):
             for i, campo in enumerate(colnames):
                 if campo in self.campos:
                     self.campos[campo].delete(0, tk.END)
-                    self.campos[campo].insert(0, row[i])
+                    self.campos[campo].insert(0, str(row[i]) if row[i] is not None else "")
+        
+        # Carregar histórico no treeview
+        self.carregar_historico()
+        conn.close()
+
+    def carregar_historico(self):
+        """Carrega o histórico de configurações no treeview"""
+        self.tree.delete(*self.tree.get_children())
+        conn = self.conectar()
+        cursor = conn.cursor()
+        
+        # Adicionar coluna de timestamp se não existir
+        try:
+            cursor.execute("ALTER TABLE system ADD COLUMN data_config DATETIME DEFAULT CURRENT_TIMESTAMP")
+            conn.commit()
+        except:
+            pass  # Coluna já existe
+        
+        cursor.execute("""
+            SELECT rowid, nm_razao, nr_cnpj, nr_fone, 
+                   COALESCE(data_config, 'Não informado') as data_config 
+            FROM system 
+            ORDER BY rowid DESC
+        """)
+        
+        for row in cursor.fetchall():
+            self.tree.insert("", "end", values=row)
         conn.close()
 
     def salvar(self):
         valores = {campo: self.campos[campo].get() for campo in self.campos}
+        
+        # Validação básica
+        if not valores.get("nm_razao", "").strip():
+            messagebox.showwarning("Atenção", "Razão Social é obrigatória.")
+            return
+        
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM system")
-        cursor.execute(f"""
-            INSERT INTO system ({', '.join(valores.keys())})
-            VALUES ({', '.join(['?' for _ in valores])})
-        """, tuple(valores.values()))
-        conn.commit()
+        
+        try:
+            # Adicionar timestamp
+            valores["data_config"] = "datetime('now', 'localtime')"
+            
+            cursor.execute("DELETE FROM system")
+            
+            # Construir query com timestamp
+            campos = list(valores.keys())
+            valores_query = []
+            for campo in campos:
+                if campo == "data_config":
+                    valores_query.append("datetime('now', 'localtime')")
+                else:
+                    valores_query.append("?")
+            
+            query = f"INSERT INTO system ({', '.join(campos)}) VALUES ({', '.join(valores_query)})"
+            valores_sem_timestamp = [v for k, v in valores.items() if k != "data_config"]
+            
+            cursor.execute(query, valores_sem_timestamp)
+            conn.commit()
+            messagebox.showinfo("Sucesso", "Configurações salvas com sucesso!")
+            self.carregar_historico()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar configurações: {str(e)}")
+        finally:
+            conn.close()
+
+    def remover(self):
+        """Remove a configuração atual"""
+        resposta = messagebox.askyesno("Confirmar", "Deseja realmente limpar todas as configurações?")
+        if not resposta:
+            return
+            
+        conn = self.conectar()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM system")
+            conn.commit()
+            messagebox.showinfo("Sucesso", "Configurações removidas com sucesso!")
+            self.limpar()
+            self.carregar_historico()
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao remover configurações: {str(e)}")
+        finally:
+            conn.close()
+
+    def on_select(self, event):
+        """Carrega configuração selecionada no histórico"""
+        item = self.tree.item(self.tree.focus())
+        if not item:
+            return
+        
+        rowid = item["values"][0]
+        conn = self.conectar()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM system WHERE rowid = ?", (rowid,))
+        row = cursor.fetchone()
+        
+        if row:
+            colnames = [desc[0] for desc in cursor.description]
+            for i, campo in enumerate(colnames):
+                if campo in self.campos:
+                    self.campos[campo].delete(0, tk.END)
+                    self.campos[campo].insert(0, str(row[i]) if row[i] is not None else "")
         conn.close()
-        messagebox.showinfo("Sucesso", "Configurações salvas com sucesso.")
+
+    def limpar(self):
+        """Limpa todos os campos"""
+        for campo in self.campos:
+            self.campos[campo].delete(0, tk.END)
+        
+    def ir_primeiro(self):
+        """Navega para o primeiro registro na lista"""
+        items = self.tree.get_children()
+        if items:
+            primeiro_item = items[0]
+            self.tree.selection_set(primeiro_item)
+            self.tree.focus(primeiro_item)
+            self.tree.see(primeiro_item)
+            self.on_select(None)
+            
+    def ir_ultimo(self):
+        """Navega para o último registro na lista"""
+        items = self.tree.get_children()
+        if items:
+            ultimo_item = items[-1]
+            self.tree.selection_set(ultimo_item)
+            self.tree.focus(ultimo_item)
+            self.tree.see(ultimo_item)
+            self.on_select(None)
+            
+    def ir_anterior(self):
+        """Navega para o registro anterior na lista"""
+        selecionado = self.tree.selection()
+        if not selecionado:
+            self.ir_primeiro()
+            return
+            
+        items = self.tree.get_children()
+        idx = items.index(selecionado[0])
+        
+        if idx > 0:
+            anterior = items[idx - 1]
+            self.tree.selection_set(anterior)
+            self.tree.focus(anterior)
+            self.tree.see(anterior)
+            self.on_select(None)
+            
+    def ir_proximo(self):
+        """Navega para o próximo registro na lista"""
+        selecionado = self.tree.selection()
+        if not selecionado:
+            self.ir_primeiro()
+            return
+            
+        items = self.tree.get_children()
+        idx = items.index(selecionado[0])
+        
+        if idx < len(items) - 1:
+            proximo = items[idx + 1]
+            self.tree.selection_set(proximo)
+            self.tree.focus(proximo)
+            self.tree.see(proximo)
+            self.on_select(None)

@@ -52,7 +52,7 @@ class App(ttkb.Window):
                 {"label": "Produtos Fiscais", "command": self.abrir_produto_fiscal},
                 {"label": "Comissões", "command": self.abrir_comissao},
                 {"label": "Itens de Produção", "command": self.abrir_itens_producao},
-                {"label": "Tipos", "command": self.abrir_tipo},
+                {"label": "Tipos de Clientes", "command": self.abrir_tipo},
                 {"label": "Textos", "command": self.abrir_textos},
             ],
             "Movimentação": [

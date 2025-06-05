@@ -3,7 +3,6 @@ from ttkbootstrap.constants import *
 import tkinter as tk
 from tkinter import messagebox
 from estilo import aplicar_estilo
-
 import sqlite3
 
 DB_PATH = "alba_zip_extracted/alba.sqlite"
@@ -13,59 +12,118 @@ class NatopWindow(ttkb.Toplevel):
         super().__init__(master)
         aplicar_estilo(self)
         self.title("Cadastro de Naturezas da Operação (NATOP)")
-        self.geometry("850x450")
+        self.geometry("900x500")
         self.resizable(False, False)
 
-        frame = ttkb.Frame(self, padding=10)
-        frame.pack(fill=tk.BOTH, expand=True)
+        # Frame principal
+        main_frame = ttkb.Frame(self, padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        ttkb.Label(frame, text="Descrição").grid(row=0, column=0, sticky=tk.W)
-        self.entry_desc = ttkb.Entry(frame, width=40)
-        self.entry_desc.grid(row=0, column=1, pady=5)
+        # Barra de ferramentas no topo
+        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
 
-        ttkb.Label(frame, text="CFOP").grid(row=1, column=0, sticky=tk.W)
-        self.entry_cfop = ttkb.Entry(frame, width=20)
-        self.entry_cfop.grid(row=1, column=1, pady=5)
+        # Container para os botões grudados
+        button_container = ttkb.Frame(toolbar_frame)
+        button_container.pack(side=tk.LEFT)
 
-        ttkb.Label(frame, text="Fluxo").grid(row=2, column=0, sticky=tk.W)
-        self.entry_fluxo = ttkb.Entry(frame, width=20)
-        self.entry_fluxo.grid(row=2, column=1, pady=5)
+        # Botões da barra de ferramentas com ícones
+        self.btn_novo = ttkb.Button(button_container, text="➕", command=self.novo, width=3)
+        self.btn_novo.pack(side=tk.LEFT)
 
-        ttkb.Label(frame, text="Livro Entrada").grid(row=0, column=2, sticky=tk.W)
-        self.entry_ent = ttkb.Entry(frame, width=10)
-        self.entry_ent.grid(row=0, column=3, pady=5)
+        self.btn_salvar = ttkb.Button(button_container, text="💾", command=self.salvar, width=3)
+        self.btn_salvar.pack(side=tk.LEFT)
 
-        ttkb.Label(frame, text="Livro Saída").grid(row=1, column=2, sticky=tk.W)
-        self.entry_sai = ttkb.Entry(frame, width=10)
-        self.entry_sai.grid(row=1, column=3, pady=5)
+        self.btn_remover = ttkb.Button(button_container, text="🗑️", command=self.remover, width=3)
+        self.btn_remover.pack(side=tk.LEFT)
 
-        ttkb.Label(frame, text="Livro Serviço").grid(row=2, column=2, sticky=tk.W)
-        self.entry_srv = ttkb.Entry(frame, width=10)
-        self.entry_srv.grid(row=2, column=3, pady=5)
-
-        ttkb.Button(frame, text="Salvar", command=self.salvar, bootstyle=SUCCESS).grid(row=3, column=1, pady=10, sticky=tk.E)
-        ttkb.Button(frame, text="Remover", command=self.remover, bootstyle=DANGER).grid(row=3, column=2, sticky=tk.W)
-
-        # Frame para botões de navegação
-        nav_frame = ttkb.Frame(self, padding=5)
-        nav_frame.pack(fill=tk.X, padx=10)
+        # Separador visual
+        separator = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
 
         # Botões de navegação
-        ttkb.Button(nav_frame, text="⏮ Primeiro", command=self.ir_primeiro, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
-        ttkb.Button(nav_frame, text="◀ Anterior", command=self.ir_anterior, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
-        ttkb.Button(nav_frame, text="Próximo ▶", command=self.ir_proximo, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
-        ttkb.Button(nav_frame, text="Último ⏭", command=self.ir_ultimo, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
+        nav_container = ttkb.Frame(toolbar_frame)
+        nav_container.pack(side=tk.LEFT, padx=(10, 0))
 
-        self.tree = ttkb.Treeview(self, columns=("id", "desc", "cfop", "fluxo", "ent", "sai", "srv"), show="headings")
-        for col in self.tree["columns"]:
-            self.tree.heading(col, text=col.upper())
-        self.tree.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
+        ttkb.Button(nav_container, text="⏮", command=self.ir_primeiro, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Frame para campos de entrada
+        input_frame = ttkb.Frame(main_frame)
+        input_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Primeira linha
+        ttkb.Label(input_frame, text="Descrição").grid(row=0, column=0, sticky=tk.W)
+        self.entry_desc = ttkb.Entry(input_frame, width=40)
+        self.entry_desc.grid(row=0, column=1, pady=5, padx=(5, 20))
+
+        ttkb.Label(input_frame, text="CFOP").grid(row=0, column=2, sticky=tk.W)
+        self.entry_cfop = ttkb.Entry(input_frame, width=20)
+        self.entry_cfop.grid(row=0, column=3, pady=5, padx=(5, 20))
+
+        ttkb.Label(input_frame, text="Fluxo").grid(row=0, column=4, sticky=tk.W)
+        self.entry_fluxo = ttkb.Entry(input_frame, width=20)
+        self.entry_fluxo.grid(row=0, column=5, pady=5, padx=5)
+
+        # Segunda linha
+        ttkb.Label(input_frame, text="Livro Entrada").grid(row=1, column=0, sticky=tk.W)
+        self.entry_ent = ttkb.Entry(input_frame, width=15)
+        self.entry_ent.grid(row=1, column=1, pady=5, padx=(5, 20))
+
+        ttkb.Label(input_frame, text="Livro Saída").grid(row=1, column=2, sticky=tk.W)
+        self.entry_sai = ttkb.Entry(input_frame, width=15)
+        self.entry_sai.grid(row=1, column=3, pady=5, padx=(5, 20))
+
+        ttkb.Label(input_frame, text="Livro Serviço").grid(row=1, column=4, sticky=tk.W)
+        self.entry_srv = ttkb.Entry(input_frame, width=15)
+        self.entry_srv.grid(row=1, column=5, pady=5, padx=5)
+
+        # Frame para o Treeview (área expandida)
+        tree_frame = ttkb.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Treeview com colunas redimensionadas
+        self.tree = ttkb.Treeview(tree_frame, columns=("id", "desc", "cfop", "fluxo", "ent", "sai", "srv"), show="headings", height=15)
+        
+        # Configuração das colunas
+        self.tree.heading("id", text="ID")
+        self.tree.heading("desc", text="Descrição")
+        self.tree.heading("cfop", text="CFOP")
+        self.tree.heading("fluxo", text="Fluxo")
+        self.tree.heading("ent", text="Livro Ent.")
+        self.tree.heading("sai", text="Livro Saí.")
+        self.tree.heading("srv", text="Livro Srv.")
+        
+        # Hide the id column
+        self.tree.column("id", width=0, stretch=False)
+        self.tree.column("desc", width=300, minwidth=200, anchor=tk.W)
+        self.tree.column("cfop", width=80, minwidth=60, anchor=tk.CENTER)
+        self.tree.column("fluxo", width=80, minwidth=60, anchor=tk.CENTER)
+        self.tree.column("ent", width=80, minwidth=60, anchor=tk.CENTER)
+        self.tree.column("sai", width=80, minwidth=60, anchor=tk.CENTER)
+        self.tree.column("srv", width=80, minwidth=60, anchor=tk.CENTER)
+        
+        # Scrollbar para o Treeview
+        scrollbar = ttkb.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack do Treeview e Scrollbar
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
         self.tree.bind("<ButtonRelease-1>", self.on_select)
 
         self.carregar()
 
     def conectar(self):
         return sqlite3.connect(DB_PATH)
+
+    def novo(self):
+        """Limpa os campos para inclusão de novo registro"""
+        self.limpar()
+        self.entry_desc.focus()
 
     def salvar(self):
         desc = self.entry_desc.get()
@@ -76,7 +134,7 @@ class NatopWindow(ttkb.Toplevel):
         srv = self.entry_srv.get()
 
         if not desc or not cfop:
-            messagebox.showwarning("Atenção", "Preencha os campos obrigatórios.")
+            messagebox.showwarning("Atenção", "Preencha os campos obrigatórios (Descrição e CFOP).")
             return
 
         conn = self.conectar()
@@ -96,6 +154,11 @@ class NatopWindow(ttkb.Toplevel):
         if not item:
             return
         id_natop = self.tree.item(item)["values"][0]
+        
+        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover este registro?")
+        if not resposta:
+            return
+            
         conn = self.conectar()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM natop WHERE id_natop = ?", (id_natop,))
@@ -107,7 +170,7 @@ class NatopWindow(ttkb.Toplevel):
         self.tree.delete(*self.tree.get_children())
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("SELECT id_natop, ds_natop, cd_cfop, fl_fluxo, fl_livro_ent, fl_livro_sai, fl_livro_srv FROM natop")
+        cursor.execute("SELECT id_natop, ds_natop, cd_cfop, fl_fluxo, fl_livro_ent, fl_livro_sai, fl_livro_srv FROM natop ORDER BY ds_natop")
         for row in cursor.fetchall():
             self.tree.insert("", "end", values=row)
         conn.close()
@@ -117,18 +180,24 @@ class NatopWindow(ttkb.Toplevel):
         if not item:
             return
         _, desc, cfop, fluxo, ent, sai, srv = item["values"]
+        
         self.entry_desc.delete(0, tk.END)
-        self.entry_desc.insert(0, desc)
+        self.entry_desc.insert(0, desc or "")
+        
         self.entry_cfop.delete(0, tk.END)
-        self.entry_cfop.insert(0, cfop)
+        self.entry_cfop.insert(0, cfop or "")
+        
         self.entry_fluxo.delete(0, tk.END)
-        self.entry_fluxo.insert(0, fluxo)
+        self.entry_fluxo.insert(0, fluxo or "")
+        
         self.entry_ent.delete(0, tk.END)
-        self.entry_ent.insert(0, ent)
+        self.entry_ent.insert(0, ent or "")
+        
         self.entry_sai.delete(0, tk.END)
-        self.entry_sai.insert(0, sai)
+        self.entry_sai.insert(0, sai or "")
+        
         self.entry_srv.delete(0, tk.END)
-        self.entry_srv.insert(0, srv)
+        self.entry_srv.insert(0, srv or "")
 
     def limpar(self):
         self.entry_desc.delete(0, tk.END)
@@ -191,5 +260,3 @@ class NatopWindow(ttkb.Toplevel):
             self.tree.focus(proximo)
             self.tree.see(proximo)
             self.on_select(None)
-    
-

@@ -12,11 +12,58 @@ class ProdutoFiscalWindow(ttkb.Toplevel):
         super().__init__(master)
         aplicar_estilo(self)
         self.title("Cadastro Produto Fiscal")
-        self.geometry("900x700")
+        self.geometry("1200x800")
         self.resizable(True, True)
 
-        notebook = ttkb.Notebook(self)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Frame principal
+        main_frame = ttkb.Frame(self, padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Barra de ferramentas no topo
+        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Container para os botões grudados
+        button_container = ttkb.Frame(toolbar_frame)
+        button_container.pack(side=tk.LEFT)
+
+        # Botões da barra de ferramentas com ícones
+        self.btn_novo = ttkb.Button(button_container, text="➕", command=self.novo, width=3)
+        self.btn_novo.pack(side=tk.LEFT)
+
+        self.btn_salvar = ttkb.Button(button_container, text="💾", command=self.salvar_dados, width=3)
+        self.btn_salvar.pack(side=tk.LEFT)
+
+        self.btn_remover = ttkb.Button(button_container, text="🗑️", command=self.remover, width=3)
+        self.btn_remover.pack(side=tk.LEFT)
+
+        # Separador visual
+        separator = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+
+        # Botões de navegação
+        nav_container = ttkb.Frame(toolbar_frame)
+        nav_container.pack(side=tk.LEFT, padx=(10, 0))
+
+        ttkb.Button(nav_container, text="⏮", command=self.ir_primeiro, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Separador visual
+        separator2 = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator2.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+
+        # Botões de busca
+        search_container = ttkb.Frame(toolbar_frame)
+        search_container.pack(side=tk.LEFT, padx=(10, 0))
+
+        ttkb.Button(search_container, text="🔍", command=self.buscar_produto_por_nome, width=3).pack(side=tk.LEFT)
+        ttkb.Button(search_container, text="🔄", command=self.carregar_dados, width=3).pack(side=tk.LEFT)
+
+        # Notebook para as abas
+        notebook = ttkb.Notebook(main_frame)
+        notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
 
         self.frames = {}
         abas = [
@@ -101,34 +148,46 @@ class ProdutoFiscalWindow(ttkb.Toplevel):
                     entry.grid(row=i, column=1, padx=5, pady=3)
                     setattr(self, f"entry_{var}", entry)
 
-        # Botões principais
-        frame_botoes = ttkb.Frame(self)
-        frame_botoes.pack(fill=tk.X, padx=10, pady=(0, 10))
-        ttkb.Button(frame_botoes, text="Salvar", command=self.salvar_dados, bootstyle=SUCCESS).pack(side=tk.RIGHT, padx=5)
-        ttkb.Button(frame_botoes, text="Limpar", command=self.limpar_campos, bootstyle=INFO).pack(side=tk.RIGHT, padx=5)
-        ttkb.Button(frame_botoes, text="Limpar Filtro", command=self.carregar_dados, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
-
-        # Botões de navegação
-        frame_nav = ttkb.Frame(self)
-        frame_nav.pack(fill=tk.X, padx=10, pady=(0, 10))
-        ttkb.Button(frame_nav, text="⏮ Primeiro", command=self.ir_primeiro, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
-        ttkb.Button(frame_nav, text="◀ Anterior", command=self.ir_anterior, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
-        ttkb.Button(frame_nav, text="Próximo ▶", command=self.ir_proximo, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
-        ttkb.Button(frame_nav, text="Último ⏭", command=self.ir_ultimo, bootstyle=INFO).pack(side=tk.LEFT, padx=5)
+        # Frame para o Treeview (área expandida)
+        tree_frame = ttkb.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
 
         # Treeview para exibir produtos
-        self.tree = ttkb.Treeview(self, columns=("id", "cd_produto", "nm_produto", "cd_unidade", "cd_ncm" ), show="headings")
-        for col in self.tree["columns"]:
-            self.tree.heading(col, text=col)
+        self.tree = ttkb.Treeview(tree_frame, columns=("id", "nm_produto", "cd_produto", "cd_unidade", "cd_ncm"), show="headings", height=12)
+        
+        # Configuração das colunas
+        self.tree.heading("id", text="ID")
+        self.tree.heading("nm_produto", text="Nome Produto")
+        self.tree.heading("cd_produto", text="Código")
+        self.tree.heading("cd_unidade", text="Unidade")
+        self.tree.heading("cd_ncm", text="NCM")
+        
+        # Hide the id column
         self.tree.column("id", width=0, stretch=False)
-        self.tree.heading("id", text="")
-        self.tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.tree.column("nm_produto", width=300, minwidth=200, anchor=tk.W)
+        self.tree.column("cd_produto", width=100, minwidth=80, anchor=tk.CENTER)
+        self.tree.column("cd_unidade", width=80, minwidth=60, anchor=tk.CENTER)
+        self.tree.column("cd_ncm", width=100, minwidth=80, anchor=tk.CENTER)
+        
+        # Scrollbar para o Treeview
+        scrollbar = ttkb.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack do Treeview e Scrollbar
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
         self.tree.bind("<ButtonRelease-1>", self.on_select)
 
         self.carregar_dados()
 
     def conectar(self):
         return sqlite3.connect(DB_PATH)
+
+    def novo(self):
+        """Limpa os campos para inclusão de novo registro"""
+        self.limpar_campos()
+        self.entry_cd_produto.focus()
 
     def buscar_produto_por_nome(self):
         nome_busca = self.entry_nm_produto.get()
@@ -142,8 +201,9 @@ class ProdutoFiscalWindow(ttkb.Toplevel):
         conn = self.conectar()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT * FROM alba0005 
+            SELECT id_produto, nm_produto, cd_produto, cd_unidade, cd_ncm FROM alba0005 
             WHERE nm_produto LIKE ?
+            ORDER BY nm_produto
         """, (f'%{nome_busca}%',))
         
         for row in cursor.fetchall():
@@ -162,8 +222,9 @@ class ProdutoFiscalWindow(ttkb.Toplevel):
         conn = self.conectar()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT * FROM alba0005 
+            SELECT id_produto, nm_produto, cd_produto, cd_unidade, cd_ncm FROM alba0005 
             WHERE cd_produto LIKE ?
+            ORDER BY nm_produto
         """, (f'%{codigo_busca}%',))
         
         for row in cursor.fetchall():
@@ -171,24 +232,58 @@ class ProdutoFiscalWindow(ttkb.Toplevel):
         conn.close()
 
     def salvar_dados(self):
+        # Verificar se os campos obrigatórios estão preenchidos
+        if not self.entry_cd_produto.get() or not self.entry_nm_produto.get():
+            messagebox.showwarning("Atenção", "Preencha os campos obrigatórios (Código e Nome do Produto).")
+            return
+
         campos = [attr[6:] for attr in dir(self) if attr.startswith("entry_")]
         valores = [getattr(self, f"entry_{c}").get() for c in campos]
         placeholders = ', '.join(['?'] * len(campos))
         sql = f"INSERT INTO alba0005 ({', '.join(campos)}) VALUES ({placeholders})"
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute(sql, valores)
-        conn.commit()
-        conn.close()
-        self.limpar_campos()
-        self.carregar_dados()
+        
+        try:
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute(sql, valores)
+            conn.commit()
+            conn.close()
+            self.limpar_campos()
+            self.carregar_dados()
+            messagebox.showinfo("Sucesso", "Produto fiscal salvo com sucesso!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar produto: {str(e)}")
+
+    def remover(self):
+        item = self.tree.focus()
+        if not item:
+            messagebox.showwarning("Atenção", "Selecione um produto para remover.")
+            return
+            
+        id_produto = self.tree.item(item)["values"][0]
+        
+        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover este produto?")
+        if not resposta:
+            return
+            
+        try:
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM alba0005 WHERE id_produto = ?", (id_produto,))
+            conn.commit()
+            conn.close()
+            self.carregar_dados()
+            self.limpar_campos()
+            messagebox.showinfo("Sucesso", "Produto removido com sucesso!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao remover produto: {str(e)}")
 
     def carregar_dados(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM alba0005")
+        cursor.execute("SELECT id_produto, nm_produto, cd_produto, cd_unidade, cd_ncm FROM alba0005 ORDER BY nm_produto")
         for row in cursor.fetchall():
             self.tree.insert("", "end", values=row)
         conn.close()
@@ -209,37 +304,46 @@ class ProdutoFiscalWindow(ttkb.Toplevel):
                 entry = getattr(self, f"entry_{col}", None)
                 if entry:
                     entry.delete(0, tk.END)
-                    entry.insert(0, row[i])
+                    entry.insert(0, row[i] if row[i] is not None else "")
 
     def limpar_campos(self):
-        for attr in dir(self):
-            if attr.startswith("entry_"):
-                getattr(self, attr).delete(0, tk.END)
-
+        """Limpa todos os campos do formulário"""
+        campos = [attr[6:] for attr in dir(self) if attr.startswith("entry_")]
+        for campo in campos:
+            entry = getattr(self, f"entry_{campo}", None)
+            if entry:
+                entry.delete(0, tk.END)
 
     def ir_primeiro(self):
+        """Navega para o primeiro registro na lista"""
         items = self.tree.get_children()
         if items:
-            self.tree.selection_set(items[0])
-            self.tree.focus(items[0])
-            self.tree.see(items[0])
+            primeiro_item = items[0]
+            self.tree.selection_set(primeiro_item)
+            self.tree.focus(primeiro_item)
+            self.tree.see(primeiro_item)
             self.on_select(None)
 
     def ir_ultimo(self):
+        """Navega para o último registro na lista"""
         items = self.tree.get_children()
         if items:
-            self.tree.selection_set(items[-1])
-            self.tree.focus(items[-1])
-            self.tree.see(items[-1])
+            ultimo_item = items[-1]
+            self.tree.selection_set(ultimo_item)
+            self.tree.focus(ultimo_item)
+            self.tree.see(ultimo_item)
             self.on_select(None)
 
     def ir_anterior(self):
+        """Navega para o registro anterior na lista"""
         selecionado = self.tree.selection()
         if not selecionado:
             self.ir_primeiro()
             return
+            
         items = self.tree.get_children()
         idx = items.index(selecionado[0])
+        
         if idx > 0:
             anterior = items[idx - 1]
             self.tree.selection_set(anterior)
@@ -248,12 +352,15 @@ class ProdutoFiscalWindow(ttkb.Toplevel):
             self.on_select(None)
 
     def ir_proximo(self):
+        """Navega para o próximo registro na lista"""
         selecionado = self.tree.selection()
         if not selecionado:
             self.ir_primeiro()
             return
+            
         items = self.tree.get_children()
         idx = items.index(selecionado[0])
+        
         if idx < len(items) - 1:
             proximo = items[idx + 1]
             self.tree.selection_set(proximo)

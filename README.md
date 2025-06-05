@@ -1,3 +1,3 @@
 Tornar executável:
 
-$ pyinstaller --onefile --windowed cadastro_app.py
+$ pyinstaller --onefile --windowed main.py

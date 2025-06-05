@@ -12,90 +12,153 @@ class EmpresaWindow(ttkb.Toplevel):
         super().__init__(master)
         aplicar_estilo(self)
         self.title("Cadastro de Empresas")
-        self.geometry("750x600")
+        self.geometry("900x700")
         self.resizable(False, False)
 
-        notebook = ttkb.Notebook(self)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Frame principal
+        main_frame = ttkb.Frame(self, padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.frame_basico = ttkb.Frame(notebook)
-        self.frame_endereco = ttkb.Frame(notebook)
-        self.frame_jucesp = ttkb.Frame(notebook)
+        # Barra de ferramentas no topo
+        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
 
-        notebook.add(self.frame_basico, text='Dados Básicos')
-        notebook.add(self.frame_endereco, text='Endereço')
-        notebook.add(self.frame_jucesp, text='JUCESP')
+        # Container para os botões grudados
+        button_container = ttkb.Frame(toolbar_frame)
+        button_container.pack(side=tk.LEFT)
+
+        # Botões da barra de ferramentas com ícones
+        self.btn_novo = ttkb.Button(button_container, text="➕", command=self.novo, width=3)
+        self.btn_novo.pack(side=tk.LEFT)
+
+        self.btn_salvar = ttkb.Button(button_container, text="💾", command=self.salvar_empresa, width=3)
+        self.btn_salvar.pack(side=tk.LEFT)
+
+        self.btn_remover = ttkb.Button(button_container, text="🗑️", command=self.remover_empresa, width=3)
+        self.btn_remover.pack(side=tk.LEFT)
+
+        # Separador visual
+        separator = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+
+        # Botões de navegação
+        nav_container = ttkb.Frame(toolbar_frame)
+        nav_container.pack(side=tk.LEFT, padx=(10, 0))
+
+        ttkb.Button(nav_container, text="⏮", command=self.ir_primeiro, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
+        ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Notebook para as abas
+        self.notebook = ttkb.Notebook(main_frame)
+        self.notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
 
         # Aba Dados Básicos
-        ttkb.Label(self.frame_basico, text="Razão Social").grid(row=0, column=0, sticky=tk.W)
-        self.entry_razao = ttkb.Entry(self.frame_basico, width=50)
-        self.entry_razao.grid(row=0, column=1, columnspan=2, pady=5)
+        self.frame_basico = ttkb.Frame(self.notebook, padding=10)
+        self.notebook.add(self.frame_basico, text='Dados Básicos')
 
-        ttkb.Label(self.frame_basico, text="Nome Fantasia").grid(row=1, column=0, sticky=tk.W)
-        self.entry_fantasia = ttkb.Entry(self.frame_basico, width=50)
-        self.entry_fantasia.grid(row=1, column=1, columnspan=2, pady=5)
+        ttkb.Label(self.frame_basico, text="Razão Social").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.entry_razao = ttkb.Entry(self.frame_basico, width=60)
+        self.entry_razao.grid(row=0, column=1, columnspan=3, pady=5, padx=(5, 0), sticky=tk.W+tk.E)
 
-        ttkb.Label(self.frame_basico, text="CNPJ").grid(row=2, column=0, sticky=tk.W)
-        self.entry_cnpj = ttkb.Entry(self.frame_basico, width=30)
-        self.entry_cnpj.grid(row=2, column=1, pady=5)
+        ttkb.Label(self.frame_basico, text="Nome Fantasia").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.entry_fantasia = ttkb.Entry(self.frame_basico, width=60)
+        self.entry_fantasia.grid(row=1, column=1, columnspan=3, pady=5, padx=(5, 0), sticky=tk.W+tk.E)
 
-        ttkb.Label(self.frame_basico, text="Inscrição Estadual").grid(row=3, column=0, sticky=tk.W)
-        self.entry_ie = ttkb.Entry(self.frame_basico, width=30)
-        self.entry_ie.grid(row=3, column=1, pady=5)
+        ttkb.Label(self.frame_basico, text="CNPJ").grid(row=2, column=0, sticky=tk.W, pady=5)
+        self.entry_cnpj = ttkb.Entry(self.frame_basico, width=25)
+        self.entry_cnpj.grid(row=2, column=1, pady=5, padx=(5, 20))
 
-        ttkb.Label(self.frame_basico, text="Inscrição Municipal").grid(row=4, column=0, sticky=tk.W)
-        self.entry_im = ttkb.Entry(self.frame_basico, width=30)
-        self.entry_im.grid(row=4, column=1, pady=5)
+        ttkb.Label(self.frame_basico, text="Inscrição Estadual").grid(row=2, column=2, sticky=tk.W, pady=5)
+        self.entry_ie = ttkb.Entry(self.frame_basico, width=25)
+        self.entry_ie.grid(row=2, column=3, pady=5, padx=(5, 0))
+
+        ttkb.Label(self.frame_basico, text="Inscrição Municipal").grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.entry_im = ttkb.Entry(self.frame_basico, width=25)
+        self.entry_im.grid(row=3, column=1, pady=5, padx=(5, 0))
+
+        # Configurar expansão das colunas
+        self.frame_basico.grid_columnconfigure(1, weight=1)
+        self.frame_basico.grid_columnconfigure(3, weight=1)
 
         # Aba Endereço
-        ttkb.Label(self.frame_endereco, text="CEP").grid(row=0, column=0, sticky=tk.W)
+        self.frame_endereco = ttkb.Frame(self.notebook, padding=10)
+        self.notebook.add(self.frame_endereco, text='Endereço')
+
+        ttkb.Label(self.frame_endereco, text="CEP").grid(row=0, column=0, sticky=tk.W, pady=5)
         self.entry_cep = ttkb.Entry(self.frame_endereco, width=15)
-        self.entry_cep.grid(row=0, column=1, pady=5)
+        self.entry_cep.grid(row=0, column=1, pady=5, padx=(5, 20))
 
-        ttkb.Label(self.frame_endereco, text="Número").grid(row=1, column=0, sticky=tk.W)
+        ttkb.Label(self.frame_endereco, text="Número").grid(row=0, column=2, sticky=tk.W, pady=5)
         self.entry_numero = ttkb.Entry(self.frame_endereco, width=10)
-        self.entry_numero.grid(row=1, column=1, pady=5)
+        self.entry_numero.grid(row=0, column=3, pady=5, padx=(5, 0))
 
-        ttkb.Label(self.frame_endereco, text="Complemento").grid(row=2, column=0, sticky=tk.W)
-        self.entry_complemento = ttkb.Entry(self.frame_endereco, width=40)
-        self.entry_complemento.grid(row=2, column=1, pady=5)
+        ttkb.Label(self.frame_endereco, text="Complemento").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.entry_complemento = ttkb.Entry(self.frame_endereco, width=50)
+        self.entry_complemento.grid(row=1, column=1, columnspan=3, pady=5, padx=(5, 0), sticky=tk.W+tk.E)
+
+        # Configurar expansão das colunas
+        self.frame_endereco.grid_columnconfigure(1, weight=1)
 
         # Aba JUCESP
-        ttkb.Label(self.frame_jucesp, text="Nº JUCESP Cadastro").grid(row=0, column=0, sticky=tk.W)
-        self.entry_jucesp_cad = ttkb.Entry(self.frame_jucesp, width=20)
-        self.entry_jucesp_cad.grid(row=0, column=1, pady=5)
+        self.frame_jucesp = ttkb.Frame(self.notebook, padding=10)
+        self.notebook.add(self.frame_jucesp, text='JUCESP')
 
-        ttkb.Label(self.frame_jucesp, text="Data Cadastro").grid(row=1, column=0, sticky=tk.W)
+        ttkb.Label(self.frame_jucesp, text="Nº JUCESP Cadastro").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.entry_jucesp_cad = ttkb.Entry(self.frame_jucesp, width=25)
+        self.entry_jucesp_cad.grid(row=0, column=1, pady=5, padx=(5, 20))
+
+        ttkb.Label(self.frame_jucesp, text="Data Cadastro").grid(row=0, column=2, sticky=tk.W, pady=5)
         self.entry_dt_cad = ttkb.Entry(self.frame_jucesp, width=20)
-        self.entry_dt_cad.grid(row=1, column=1, pady=5)
+        self.entry_dt_cad.grid(row=0, column=3, pady=5, padx=(5, 0))
 
-        ttkb.Label(self.frame_jucesp, text="Nº JUCESP Alteração").grid(row=2, column=0, sticky=tk.W)
-        self.entry_jucesp_alt = ttkb.Entry(self.frame_jucesp, width=20)
-        self.entry_jucesp_alt.grid(row=2, column=1, pady=5)
+        ttkb.Label(self.frame_jucesp, text="Nº JUCESP Alteração").grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.entry_jucesp_alt = ttkb.Entry(self.frame_jucesp, width=25)
+        self.entry_jucesp_alt.grid(row=1, column=1, pady=5, padx=(5, 20))
 
-        ttkb.Label(self.frame_jucesp, text="Data Alteração").grid(row=3, column=0, sticky=tk.W)
+        ttkb.Label(self.frame_jucesp, text="Data Alteração").grid(row=1, column=2, sticky=tk.W, pady=5)
         self.entry_dt_alt = ttkb.Entry(self.frame_jucesp, width=20)
-        self.entry_dt_alt.grid(row=3, column=1, pady=5)
+        self.entry_dt_alt.grid(row=1, column=3, pady=5, padx=(5, 0))
 
-        # Botões principais (abaixo do notebook)
-        frame_botoes = ttkb.Frame(self)
-        frame_botoes.pack(fill=tk.X, padx=10, pady=(0,10))
-        ttkb.Button(frame_botoes, text="Salvar", command=self.salvar_empresa, bootstyle=SUCCESS).pack(side=tk.RIGHT, padx=5)
-        ttkb.Button(frame_botoes, text="Remover", command=self.remover_empresa, bootstyle=DANGER).pack(side=tk.RIGHT, padx=5)
+        # Frame para o Treeview (área expandida)
+        tree_frame = ttkb.Frame(main_frame)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Treeview para exibir empresas
-        self.tree = ttkb.Treeview(self, columns=("id", "razao", "fantasia", "cnpj"), show="headings")
-        for col in self.tree["columns"]:
-            self.tree.heading(col, text=col.capitalize())
+        # Treeview com colunas redimensionadas
+        self.tree = ttkb.Treeview(tree_frame, columns=("id", "razao", "fantasia", "cnpj"), show="headings", height=12)
+            
+        # Configuração das colunas
+        self.tree.heading("id", text="ID")
+        self.tree.heading("razao", text="Razão Social")
+        self.tree.heading("fantasia", text="Nome Fantasia")
+        self.tree.heading("cnpj", text="CNPJ")
+            
+        # Hide the id column
         self.tree.column("id", width=0, stretch=False)
-        self.tree.heading("id", text="")
-        self.tree.pack(expand=True, fill="both", padx=10, pady=10)
+        self.tree.column("razao", width=300, minwidth=200, anchor=tk.W)
+        self.tree.column("fantasia", width=250, minwidth=150, anchor=tk.W)
+        self.tree.column("cnpj", width=150, minwidth=120, anchor=tk.CENTER)
+            
+        # Scrollbar para o Treeview
+        scrollbar = ttkb.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+            
+        # Pack do Treeview e Scrollbar
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            
         self.tree.bind("<ButtonRelease-1>", self.on_select)
 
         self.carregar_empresas()
 
     def conectar(self):
         return sqlite3.connect(DB_PATH)
+
+    def novo(self):
+        """Limpa os campos para inclusão de novo registro"""
+        self.limpar_campos()
+        self.entry_razao.focus()
 
     def salvar_empresa(self):
         dados = (
@@ -121,34 +184,44 @@ class EmpresaWindow(ttkb.Toplevel):
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO empresas (nm_razao, nm_fantasia, nr_cnpj, nr_ie, nr_im, cd_cep,
-                                  nr_numero, nm_complemento, nr_jucesp_cad, dt_jucesp_cad,
-                                  nr_jucesp_alt, dt_jucesp_alt)
+                                nr_numero, nm_complemento, nr_jucesp_cad, dt_jucesp_cad,
+                                nr_jucesp_alt, dt_jucesp_alt)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, dados)
         conn.commit()
         conn.close()
         self.limpar_campos()
         self.carregar_empresas()
+        messagebox.showinfo("Sucesso", "Empresa salva com sucesso!")
 
     def remover_empresa(self):
         selecionado = self.tree.focus()
         if not selecionado:
+            messagebox.showwarning("Atenção", "Selecione uma empresa para remover.")
             return
+                
         item = self.tree.item(selecionado)
         empresa_id = item["values"][0]
+            
+        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover esta empresa?")
+        if not resposta:
+            return
+                
         conn = self.conectar()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM empresas WHERE id_empresa = ?", (empresa_id,))
         conn.commit()
         conn.close()
         self.carregar_empresas()
+        self.limpar_campos()
+        messagebox.showinfo("Sucesso", "Empresa removida com sucesso!")
 
     def carregar_empresas(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("SELECT id_empresa, nm_razao, nm_fantasia, nr_cnpj FROM empresas")
+        cursor.execute("SELECT id_empresa, nm_razao, nm_fantasia, nr_cnpj FROM empresas ORDER BY nm_razao")
         for row in cursor.fetchall():
             self.tree.insert("", "end", values=row)
         conn.close()
@@ -162,7 +235,7 @@ class EmpresaWindow(ttkb.Toplevel):
         cursor = conn.cursor()
         cursor.execute("""
             SELECT nm_razao, nm_fantasia, nr_cnpj, nr_ie, nr_im, cd_cep, nr_numero,
-                   nm_complemento, nr_jucesp_cad, dt_jucesp_cad, nr_jucesp_alt, dt_jucesp_alt
+                nm_complemento, nr_jucesp_cad, dt_jucesp_cad, nr_jucesp_alt, dt_jucesp_alt
             FROM empresas WHERE id_empresa = ?
         """, (empresa_id,))
         resultado = cursor.fetchone()
@@ -170,36 +243,109 @@ class EmpresaWindow(ttkb.Toplevel):
 
         if resultado:
             (razao, fantasia, cnpj, ie, im, cep, numero,
-             complemento, jucesp_cad, dt_cad, jucesp_alt, dt_alt) = resultado
+            complemento, jucesp_cad, dt_cad, jucesp_alt, dt_alt) = resultado
+                
             self.entry_razao.delete(0, tk.END)
-            self.entry_razao.insert(0, razao)
+            self.entry_razao.insert(0, razao or "")
+                
             self.entry_fantasia.delete(0, tk.END)
-            self.entry_fantasia.insert(0, fantasia)
+            self.entry_fantasia.insert(0, fantasia or "")
+                
             self.entry_cnpj.delete(0, tk.END)
-            self.entry_cnpj.insert(0, cnpj)
+            self.entry_cnpj.insert(0, cnpj or "")
+                
             self.entry_ie.delete(0, tk.END)
-            self.entry_ie.insert(0, ie)
+            self.entry_ie.insert(0, ie or "")
+                
             self.entry_im.delete(0, tk.END)
-            self.entry_im.insert(0, im)
+            self.entry_im.insert(0, im or "")
+                
             self.entry_cep.delete(0, tk.END)
-            self.entry_cep.insert(0, cep)
+            self.entry_cep.insert(0, cep or "")
+                
             self.entry_numero.delete(0, tk.END)
-            self.entry_numero.insert(0, numero)
+            self.entry_numero.insert(0, numero or "")
+                
             self.entry_complemento.delete(0, tk.END)
-            self.entry_complemento.insert(0, complemento)
+            self.entry_complemento.insert(0, complemento or "")
+                
             self.entry_jucesp_cad.delete(0, tk.END)
-            self.entry_jucesp_cad.insert(0, jucesp_cad)
+            self.entry_jucesp_cad.insert(0, jucesp_cad or "")
+                
             self.entry_dt_cad.delete(0, tk.END)
-            self.entry_dt_cad.insert(0, dt_cad)
+            self.entry_dt_cad.insert(0, dt_cad or "")
+                
             self.entry_jucesp_alt.delete(0, tk.END)
-            self.entry_jucesp_alt.insert(0, jucesp_alt)
+            self.entry_jucesp_alt.insert(0, jucesp_alt or "")
+                
             self.entry_dt_alt.delete(0, tk.END)
-            self.entry_dt_alt.insert(0, dt_alt)
+            self.entry_dt_alt.insert(0, dt_alt or "")
 
     def limpar_campos(self):
-        for entry in [
-            self.entry_razao, self.entry_fantasia, self.entry_cnpj, self.entry_ie,
-            self.entry_im, self.entry_cep, self.entry_numero, self.entry_complemento,
-            self.entry_jucesp_cad, self.entry_dt_cad, self.entry_jucesp_alt, self.entry_dt_alt
-        ]:
-            entry.delete(0, tk.END)
+        """Limpa todos os campos do formulário"""
+        self.entry_razao.delete(0, tk.END)
+        self.entry_fantasia.delete(0, tk.END)
+        self.entry_cnpj.delete(0, tk.END)
+        self.entry_ie.delete(0, tk.END)
+        self.entry_im.delete(0, tk.END)
+        self.entry_cep.delete(0, tk.END)
+        self.entry_numero.delete(0, tk.END)
+        self.entry_complemento.delete(0, tk.END)
+        self.entry_jucesp_cad.delete(0, tk.END)
+        self.entry_dt_cad.delete(0, tk.END)
+        self.entry_jucesp_alt.delete(0, tk.END)
+        self.entry_dt_alt.delete(0, tk.END)
+
+    def ir_primeiro(self):
+        """Navega para o primeiro registro na lista"""
+        items = self.tree.get_children()
+        if items:
+            primeiro_item = items[0]
+            self.tree.selection_set(primeiro_item)
+            self.tree.focus(primeiro_item)
+            self.tree.see(primeiro_item)
+            self.on_select(None)
+            
+    def ir_ultimo(self):
+        """Navega para o último registro na lista"""
+        items = self.tree.get_children()
+        if items:
+            ultimo_item = items[-1]
+            self.tree.selection_set(ultimo_item)
+            self.tree.focus(ultimo_item)
+            self.tree.see(ultimo_item)
+            self.on_select(None)
+            
+    def ir_anterior(self):
+        """Navega para o registro anterior na lista"""
+        selecionado = self.tree.selection()
+        if not selecionado:
+            self.ir_primeiro()
+            return
+            
+        items = self.tree.get_children()
+        idx = items.index(selecionado[0])
+        
+        if idx > 0:
+            anterior = items[idx - 1]
+            self.tree.selection_set(anterior)
+            self.tree.focus(anterior)
+            self.tree.see(anterior)
+            self.on_select(None)
+            
+    def ir_proximo(self):
+        """Navega para o próximo registro na lista"""
+        selecionado = self.tree.selection()
+        if not selecionado:
+            self.ir_primeiro()
+            return
+            
+        items = self.tree.get_children()
+        idx = items.index(selecionado[0])
+        
+        if idx < len(items) - 1:
+            proximo = items[idx + 1]
+            self.tree.selection_set(proximo)
+            self.tree.focus(proximo)
+            self.tree.see(proximo)
+            self.on_select(None)
