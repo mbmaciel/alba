@@ -1,8 +1,12 @@
+import os
 import ttkbootstrap as ttkb
 from tkinter import messagebox
 import sqlite3
 
-DB_PATH = "alba_zip_extracted/alba.sqlite"
+# Allow the SQLite path to be configured via the ``ALBA_DB_PATH`` environment
+# variable.  Defaults to the original hard-coded location when the variable is
+# not set.
+DB_PATH = os.environ.get("ALBA_DB_PATH", "alba_zip_extracted/alba.sqlite")
 
 class BaseWindow(ttkb.Toplevel):
     """Janela base com utilidades comuns."""
