@@ -3,11 +3,9 @@ from ttkbootstrap.constants import *
 import tkinter as tk
 from tkinter import messagebox
 from estilo import aplicar_estilo
-import sqlite3
+from windows.base_window import BaseWindow
 
-DB_PATH = "alba_zip_extracted/alba.sqlite"
-
-class AtividWindow(ttkb.Toplevel):
+class AtividWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
@@ -85,9 +83,6 @@ class AtividWindow(ttkb.Toplevel):
 
         self.carregar()
 
-    def conectar(self):
-        return sqlite3.connect(DB_PATH)
-
     def novo(self):
         """Limpa os campos para inclusão de novo registro"""
         self.limpar()
@@ -150,54 +145,3 @@ class AtividWindow(ttkb.Toplevel):
         """Limpa todos os campos do formulário"""
         self.entry_desc.delete(0, tk.END)
             
-    def ir_primeiro(self):
-        """Navega para o primeiro registro na lista"""
-        items = self.tree.get_children()
-        if items:
-            primeiro_item = items[0]
-            self.tree.selection_set(primeiro_item)
-            self.tree.focus(primeiro_item)
-            self.tree.see(primeiro_item)
-            self.on_select(None)
-            
-    def ir_ultimo(self):
-        """Navega para o último registro na lista"""
-        items = self.tree.get_children()
-        if items:
-            ultimo_item = items[-1]
-            self.tree.selection_set(ultimo_item)
-            self.tree.focus(ultimo_item)
-            self.tree.see(ultimo_item)
-            self.on_select(None)
-            
-    def ir_anterior(self):
-        """Navega para o registro anterior na lista"""
-        selecionado = self.tree.selection()
-        if not selecionado:
-            self.ir_primeiro()
-            return
-            
-        items = self.tree.get_children()
-        idx = items.index(selecionado[0])
-        if idx > 0:
-            anterior_item = items[idx - 1]
-            self.tree.selection_set(anterior_item)
-            self.tree.focus(anterior_item)
-            self.tree.see(anterior_item)
-            self.on_select(None)
-            
-    def ir_proximo(self):
-        """Navega para o próximo registro na lista"""
-        selecionado = self.tree.selection()
-        if not selecionado:
-            self.ir_primeiro()
-            return
-            
-        items = self.tree.get_children()
-        idx = items.index(selecionado[0])
-        if idx < len(items) - 1:
-            proximo_item = items[idx + 1]
-            self.tree.selection_set(proximo_item)
-            self.tree.focus(proximo_item)
-            self.tree.see(proximo_item)
-            self.on_select(None)

@@ -3,10 +3,9 @@ from ttkbootstrap.constants import *
 import tkinter as tk
 from tkinter import messagebox
 import sqlite3
+from windows.base_window import BaseWindow
 
-DB_PATH = "alba_zip_extracted/alba.sqlite"
-
-class TipoWindow(ttkb.Toplevel):
+class TipoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         self.title("Cadastro de Tipos de Clientes")
@@ -75,9 +74,6 @@ class TipoWindow(ttkb.Toplevel):
         self.tree.bind("<ButtonRelease-1>", self.on_select)
 
         self.carregar()
-
-    def conectar(self):
-        return sqlite3.connect(DB_PATH)
 
     def novo(self):
         """Limpa os campos para inclusão de novo registro"""

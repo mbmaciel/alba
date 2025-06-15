@@ -2,20 +2,10 @@ import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
 from estilo import aplicar_estilo
+from windows.base_window import BaseWindow
 import sqlite3
 
-DB_PATH = "alba_zip_extracted/alba.sqlite"
-
-def show_message(message_label, text, type="success"):
-    message_label.config(text=text)
-    if type == "success":
-        message_label.config(foreground="green")
-    elif type == "error":
-        message_label.config(foreground="red")
-    elif type == "warning":
-        message_label.config(foreground="orange")
-
-class EmpresaWindow(ttkb.Toplevel):
+class EmpresaWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
@@ -172,9 +162,6 @@ class EmpresaWindow(ttkb.Toplevel):
 
         self.carregar_empresas()
 
-    def conectar(self):
-        return sqlite3.connect(DB_PATH)
-
     def novo(self):
         """Limpa os campos para inclusão de novo registro"""
         self.limpar_campos()
@@ -197,7 +184,7 @@ class EmpresaWindow(ttkb.Toplevel):
         )
 
         if not dados[0] or not dados[2]:
-            show_message(self.message_label, "Preencha os campos obrigatórios: Razão Social e CNPJ.", "warning")
+            self.show_message("Preencha os campos obrigatórios: Razão Social e CNPJ.", "warning")
             return
 
         try:
@@ -213,14 +200,14 @@ class EmpresaWindow(ttkb.Toplevel):
             conn.close()
             self.limpar_campos()
             self.carregar_empresas()
-            show_message(self.message_label, "Empresa salva com sucesso!", "success")
+            self.show_message("Empresa salva com sucesso!", "success")
         except sqlite3.Error as e:
-            show_message(self.message_label, f"Erro ao salvar empresa: {str(e)}", "error")
+            self.show_message(f"Erro ao salvar empresa: {str(e)}", "error")
 
     def remover_empresa(self):
         selecionado = self.tree.focus()
         if not selecionado:
-            show_message(self.message_label, "Selecione uma empresa para remover.", "warning")
+            self.show_message("Selecione uma empresa para remover.", "warning")
             return
 
         item = self.tree.item(selecionado)
@@ -234,9 +221,9 @@ class EmpresaWindow(ttkb.Toplevel):
             conn.close()
             self.carregar_empresas()
             self.limpar_campos()
-            show_message(self.message_label, "Empresa removida com sucesso!", "success")
+            self.show_message("Empresa removida com sucesso!", "success")
         except sqlite3.Error as e:
-            show_message(self.message_label, f"Erro ao remover empresa: {str(e)}", "error")
+            self.show_message(f"Erro ao remover empresa: {str(e)}", "error")
 
     def carregar_empresas(self):
         for row in self.tree.get_children():
@@ -318,56 +305,3 @@ class EmpresaWindow(ttkb.Toplevel):
         self.entry_jucesp_alt.delete(0, tk.END)
         self.entry_dt_alt.delete(0, tk.END)
 
-    def ir_primeiro(self):
-        """Navega para o primeiro registro na lista"""
-        items = self.tree.get_children()
-        if items:
-            primeiro_item = items[0]
-            self.tree.selection_set(primeiro_item)
-            self.tree.focus(primeiro_item)
-            self.tree.see(primeiro_item)
-            self.on_select(None)
-            
-    def ir_ultimo(self):
-        """Navega para o último registro na lista"""
-        items = self.tree.get_children()
-        if items:
-            ultimo_item = items[-1]
-            self.tree.selection_set(ultimo_item)
-            self.tree.focus(ultimo_item)
-            self.tree.see(ultimo_item)
-            self.on_select(None)
-            
-    def ir_anterior(self):
-        """Navega para o registro anterior na lista"""
-        selecionado = self.tree.selection()
-        if not selecionado:
-            self.ir_primeiro()
-            return
-            
-        items = self.tree.get_children()
-        idx = items.index(selecionado[0])
-        
-        if idx > 0:
-            anterior = items[idx - 1]
-            self.tree.selection_set(anterior)
-            self.tree.focus(anterior)
-            self.tree.see(anterior)
-            self.on_select(None)
-            
-    def ir_proximo(self):
-        """Navega para o próximo registro na lista"""
-        selecionado = self.tree.selection()
-        if not selecionado:
-            self.ir_primeiro()
-            return
-            
-        items = self.tree.get_children()
-        idx = items.index(selecionado[0])
-        
-        if idx < len(items) - 1:
-            proximo = items[idx + 1]
-            self.tree.selection_set(proximo)
-            self.tree.focus(proximo)
-            self.tree.see(proximo)
-            self.on_select(None)
