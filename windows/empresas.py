@@ -1,11 +1,19 @@
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
-from tkinter import messagebox
 from estilo import aplicar_estilo
 import sqlite3
 
 DB_PATH = "alba_zip_extracted/alba.sqlite"
+
+def show_message(message_label, text, type="success"):
+    message_label.config(text=text)
+    if type == "success":
+        message_label.config(foreground="green")
+    elif type == "error":
+        message_label.config(foreground="red")
+    elif type == "warning":
+        message_label.config(foreground="orange")
 
 class EmpresaWindow(ttkb.Toplevel):
     def __init__(self, master=None):
@@ -19,9 +27,21 @@ class EmpresaWindow(ttkb.Toplevel):
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
+        # Frame para toolbar e mensagens
+        top_frame = ttkb.Frame(main_frame)
+        top_frame.pack(fill=tk.X, pady=(0, 15))
+
         # Barra de ferramentas no topo
-        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
-        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+        toolbar_frame = ttkb.Frame(top_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(side=tk.LEFT, fill=tk.X)
+
+        # Frame para mensagens
+        message_frame = ttkb.Frame(top_frame, padding=5)
+        message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+
+        # Label para mensagens
+        self.message_label = ttkb.Label(message_frame, text="")
+        self.message_label.pack(fill=tk.X)
 
         # Container para os botões grudados
         button_container = ttkb.Frame(toolbar_frame)
@@ -177,44 +197,46 @@ class EmpresaWindow(ttkb.Toplevel):
         )
 
         if not dados[0] or not dados[2]:
-            messagebox.showwarning("Atenção", "Preencha os campos obrigatórios: Razão Social e CNPJ.")
+            show_message(self.message_label, "Preencha os campos obrigatórios: Razão Social e CNPJ.", "warning")
             return
 
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO empresas (nm_razao, nm_fantasia, nr_cnpj, nr_ie, nr_im, cd_cep,
-                                nr_numero, nm_complemento, nr_jucesp_cad, dt_jucesp_cad,
-                                nr_jucesp_alt, dt_jucesp_alt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, dados)
-        conn.commit()
-        conn.close()
-        self.limpar_campos()
-        self.carregar_empresas()
-        messagebox.showinfo("Sucesso", "Empresa salva com sucesso!")
+        try:
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO empresas (nm_razao, nm_fantasia, nr_cnpj, nr_ie, nr_im, cd_cep,
+                                    nr_numero, nm_complemento, nr_jucesp_cad, dt_jucesp_cad,
+                                    nr_jucesp_alt, dt_jucesp_alt, recnum)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(recnum), 0) + 1 FROM empresas))
+            """, dados)
+            conn.commit()
+            conn.close()
+            self.limpar_campos()
+            self.carregar_empresas()
+            show_message(self.message_label, "Empresa salva com sucesso!", "success")
+        except sqlite3.Error as e:
+            show_message(self.message_label, f"Erro ao salvar empresa: {str(e)}", "error")
 
     def remover_empresa(self):
         selecionado = self.tree.focus()
         if not selecionado:
-            messagebox.showwarning("Atenção", "Selecione uma empresa para remover.")
+            show_message(self.message_label, "Selecione uma empresa para remover.", "warning")
             return
-                
+
         item = self.tree.item(selecionado)
         empresa_id = item["values"][0]
-            
-        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover esta empresa?")
-        if not resposta:
-            return
-                
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM empresas WHERE id_empresa = ?", (empresa_id,))
-        conn.commit()
-        conn.close()
-        self.carregar_empresas()
-        self.limpar_campos()
-        messagebox.showinfo("Sucesso", "Empresa removida com sucesso!")
+
+        try:
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM empresas WHERE id_empresa = ?", (empresa_id,))
+            conn.commit()
+            conn.close()
+            self.carregar_empresas()
+            self.limpar_campos()
+            show_message(self.message_label, "Empresa removida com sucesso!", "success")
+        except sqlite3.Error as e:
+            show_message(self.message_label, f"Erro ao remover empresa: {str(e)}", "error")
 
     def carregar_empresas(self):
         for row in self.tree.get_children():

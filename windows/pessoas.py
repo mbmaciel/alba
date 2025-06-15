@@ -211,13 +211,13 @@ class PessoaWindow(ttkb.Toplevel):
         fl_ativo = '1' if self.var_ativo.get() else '0'
 
         nome_tipo = self.combo_tipo.get()
-        id_tipo = next((id for id, nome in self.tipos if nome == nome_tipo), None)
+        id_tipo = next((id for id, nome in self.tipos if nome == nome_tipo), None) if nome_tipo else None
 
         nome_atividade = self.combo_atividade.get()
-        id_atividade = next((id for id, nome in self.atividades if nome == nome_atividade), None)
+        id_atividade = next((id for id, nome in self.atividades if nome == nome_atividade), None) if nome_atividade else None
 
         nome_transp = self.combo_transp.get()
-        id_transp = next((id for id, nome in self.transportadoras if nome == nome_transp), None)
+        id_transp = next((id for id, nome in self.transportadoras if nome == nome_transp), None) if nome_transp else None
 
         if not razao or not tipo:
             messagebox.showwarning("Atenção", "Preencha os campos obrigatórios (Razão Social e Tipo).")
@@ -225,24 +225,75 @@ class PessoaWindow(ttkb.Toplevel):
 
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO alba0001 (
-                tp_pessoa, nm_razao, nm_fantasia, nr_cnpj_cpf,
-                nr_telefone, nm_email,
-                fl_cliente, fl_fornec, fl_transp, fl_ativo,
-                id_tipo, id_atividade, id_transp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            tipo, razao, fantasia, cnpj,
-            telefone, email,
-            fl_cliente, fl_fornec, fl_transp, fl_ativo,
-            id_tipo, id_atividade, id_transp
-        ))
-        conn.commit()
-        conn.close()
-        self.limpar()
-        self.carregar()
-        messagebox.showinfo("Sucesso", "Pessoa salva com sucesso!")
+        
+        try:
+            # Get the next recnum value
+            cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM alba0001")
+            next_recnum = cursor.fetchone()[0]
+            
+            # Get the next id_pessoa value
+            cursor.execute("SELECT COALESCE(MAX(id_pessoa), 0) + 1 FROM alba0001")
+            next_id_pessoa = cursor.fetchone()[0]
+            
+            # Get the next id_antigo value
+            cursor.execute("SELECT COALESCE(MAX(id_antigo), 0) + 1 FROM alba0001")
+            next_id_antigo = cursor.fetchone()[0]
+            
+            # Build the base INSERT with required fields
+            columns = ["id_pessoa", "id_antigo", "recnum", "tp_pessoa", "nm_razao"]
+            values = [next_id_pessoa, next_id_antigo, next_recnum, tipo, razao]
+            
+            # Add optional fields if they have values
+            if fantasia:
+                columns.append("nm_fantasia")
+                values.append(fantasia)
+            
+            if cnpj:
+                columns.append("nr_cnpj_cpf")
+                values.append(cnpj)
+            
+            if telefone:
+                columns.append("nr_telefone")
+                values.append(telefone)
+            
+            if email:
+                columns.append("nm_email")
+                values.append(email)
+            
+            # Add flag fields
+            columns.extend(["fl_cliente", "fl_fornec", "fl_transp", "fl_ativo"])
+            values.extend([fl_cliente, fl_fornec, fl_transp, fl_ativo])
+            
+            # Add foreign key fields only if they have values
+            if id_tipo is not None:
+                columns.append("id_tipo")
+                values.append(id_tipo)
+            
+            if id_atividade is not None:
+                columns.append("id_atividade")
+                values.append(id_atividade)
+            
+            if id_transp is not None:
+                columns.append("id_transp")
+                values.append(id_transp)
+            
+            placeholders = ["?" for _ in values]
+            sql = f"INSERT INTO alba0001 ({', '.join(columns)}) VALUES ({', '.join(placeholders)})"
+            
+            cursor.execute(sql, values)
+            conn.commit()
+            self.limpar()
+            self.carregar()
+            messagebox.showinfo("Sucesso", "Pessoa salva com sucesso!")
+            
+        except sqlite3.IntegrityError as e:
+            conn.rollback()
+            messagebox.showerror("Erro", f"Erro ao salvar: {str(e)}")
+        except Exception as e:
+            conn.rollback()
+            messagebox.showerror("Erro", f"Erro inesperado: {str(e)}")
+        finally:
+            conn.close()
 
     def carregar(self):
         self.tree.delete(*self.tree.get_children())

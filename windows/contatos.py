@@ -1,7 +1,6 @@
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
-from tkinter import messagebox
 from estilo import aplicar_estilo
 import sqlite3
 
@@ -19,9 +18,13 @@ class ContatoWindow(ttkb.Toplevel):
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Barra de ferramentas no topo
-        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
-        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+        # Frame para barra de ferramentas e mensagens
+        top_frame = ttkb.Frame(main_frame)
+        top_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Barra de ferramentas no topo (lado esquerdo)
+        toolbar_frame = ttkb.Frame(top_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         # Container para os botões grudados
         button_container = ttkb.Frame(toolbar_frame)
@@ -60,6 +63,21 @@ class ContatoWindow(ttkb.Toplevel):
 
         ttkb.Button(search_container, text="🔍", command=self.buscar_contato, width=3).pack(side=tk.LEFT)
         ttkb.Button(search_container, text="🔄", command=self.carregar_contatos, width=3).pack(side=tk.LEFT)
+
+        # Área de mensagens (lado direito)
+        message_frame = ttkb.Frame(top_frame, relief="sunken", borderwidth=2, padding=5)
+        message_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+
+        ttkb.Label(message_frame, text="Mensagens:", font=("Arial", 8, "bold")).pack(anchor=tk.W)
+        
+        self.message_label = ttkb.Label(
+            message_frame, 
+            text="Sistema pronto para uso", 
+            font=("Arial", 9),
+            foreground="blue",
+            wraplength=300
+        )
+        self.message_label.pack(anchor=tk.W, fill=tk.BOTH, expand=True)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -137,6 +155,23 @@ class ContatoWindow(ttkb.Toplevel):
 
         self.carregar_contatos()
 
+    def show_message(self, message, msg_type="info"):
+        """Exibe mensagem na área de mensagens"""
+        colors = {
+            "info": "blue",
+            "success": "green", 
+            "warning": "orange",
+            "error": "red"
+        }
+        
+        self.message_label.config(
+            text=message,
+            foreground=colors.get(msg_type, "blue")
+        )
+        
+        # Auto-limpar mensagem após 5 segundos
+        self.after(5000, lambda: self.message_label.config(text="Sistema pronto para uso", foreground="blue"))
+
     def conectar(self):
         return sqlite3.connect(DB_PATH)
 
@@ -144,14 +179,18 @@ class ContatoWindow(ttkb.Toplevel):
         """Limpa os campos para inclusão de novo registro"""
         self.limpar_campos()
         self.entry_nome.focus()
+        self.show_message("Campos limpos. Digite os dados do novo contato.", "info")
 
     def buscar_contato(self):
         nome_busca = self.entry_nome.get()
         if not nome_busca:
             self.carregar_contatos()
+            self.show_message("Busca limpa. Mostrando todos os contatos.", "info")
             return
+            
         for row in self.tree.get_children():
             self.tree.delete(row)
+            
         conn = self.conectar()
         cursor = conn.cursor()
         cursor.execute("""
@@ -160,12 +199,20 @@ class ContatoWindow(ttkb.Toplevel):
             WHERE nm_contato LIKE ?
             ORDER BY nm_contato
         """, (f'%{nome_busca}%',))
-        for row in cursor.fetchall():
+        
+        resultados = cursor.fetchall()
+        for row in resultados:
             # Formatar celular com DDD
             id_contato, nome, ddd, telefone, celular, depto, email = row
             celular_formatado = f"{row[4] or ''}"  # nr_celular já pode conter DDD
             self.tree.insert("", "end", values=(id_contato, nome, ddd, telefone, celular_formatado, depto, email))
+        
         conn.close()
+        
+        if resultados:
+            self.show_message(f"Encontrados {len(resultados)} contato(s) com '{nome_busca}'", "success")
+        else:
+            self.show_message(f"Nenhum contato encontrado com '{nome_busca}'", "warning")
 
     def salvar_contato(self):
         nome = self.entry_nome.get()
@@ -178,59 +225,101 @@ class ContatoWindow(ttkb.Toplevel):
         email = self.entry_email.get()
 
         if not nome or not telefone:
-            messagebox.showwarning("Atenção", "Preencha os campos obrigatórios: Nome e Telefone.")
+            self.show_message("ATENÇÃO: Preencha os campos obrigatórios: Nome e Telefone.", "warning")
             return
 
         conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO contatos (nm_contato, nr_ddd_fone, nr_telefone, nr_ramal, nr_ddd_cel, nr_celular, nm_depto, nm_email) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (nome, ddd, telefone, ramal, ddd_cel, celular, depto, email))
-        conn.commit()
-        conn.close()
-        self.limpar_campos()
-        self.carregar_contatos()
-        messagebox.showinfo("Sucesso", "Contato salvo com sucesso!")
+        try:
+            cursor = conn.cursor()
+            
+            # Get next recnum value
+            cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM contatos")
+            next_recnum = cursor.fetchone()[0]
+            
+            # Insert without specifying id_contato (let it auto-increment)
+            cursor.execute("""
+                INSERT INTO contatos (recnum, nm_contato, nr_ddd_fone, nr_telefone, nr_ramal, nr_ddd_cel, nr_celular, nm_depto, nm_email) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (next_recnum, nome, ddd, telefone, ramal, ddd_cel, celular, depto, email))
+            
+            conn.commit()
+            self.limpar_campos()
+            self.carregar_contatos()
+            self.show_message(f"Contato '{nome}' salvo com sucesso!", "success")
+            
+        except sqlite3.IntegrityError as e:
+            conn.rollback()
+            if "UNIQUE constraint failed" in str(e):
+                self.show_message("ERRO: Já existe um contato com estes dados.", "error")
+            else:
+                self.show_message(f"ERRO de integridade: {str(e)}", "error")
+        except sqlite3.Error as e:
+            conn.rollback()
+            self.show_message(f"ERRO ao salvar contato: {str(e)}", "error")
+        finally:
+            conn.close()
 
     def remover_contato(self):
         selecionado = self.tree.focus()
         if not selecionado:
-            messagebox.showwarning("Atenção", "Selecione um contato para remover.")
+            self.show_message("ATENÇÃO: Selecione um contato para remover.", "warning")
             return
-            
+        
         item = self.tree.item(selecionado)
         contato_id = item["values"][0]
+        nome_contato = item["values"][1]
         
-        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover este contato?")
-        if not resposta:
-            return
-            
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM contatos WHERE id_contato = ?", (contato_id,))
-        conn.commit()
-        conn.close()
-        self.carregar_contatos()
-        self.limpar_campos()
-        messagebox.showinfo("Sucesso", "Contato removido com sucesso!")
+        # Confirmar remoção através da área de mensagens
+        self.show_message(f"Pressione novamente 'Remover' para confirmar exclusão de '{nome_contato}'", "warning")
+        
+        # Alterar temporariamente o comando do botão para confirmação
+        def confirmar_remocao():
+            try:
+                conn = self.conectar()
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM contatos WHERE id_contato = ?", (contato_id,))
+                conn.commit()
+                conn.close()
+                self.carregar_contatos()
+                self.limpar_campos()
+                self.show_message(f"Contato '{nome_contato}' removido com sucesso!", "success")
+            except sqlite3.Error as e:
+                self.show_message(f"ERRO ao remover contato: {str(e)}", "error")
+            finally:
+                # Restaurar comando original do botão
+                self.btn_remover.config(command=self.remover_contato)
+        
+        # Alterar comando do botão temporariamente
+        self.btn_remover.config(command=confirmar_remocao)
+        
+        # Restaurar comando original após 10 segundos
+        self.after(10000, lambda: self.btn_remover.config(command=self.remover_contato))
 
     def carregar_contatos(self):
         for row in self.tree.get_children():
             self.tree.delete(row)
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id_contato, nm_contato, nr_ddd_fone, nr_telefone, nr_celular, nm_depto, nm_email 
-            FROM contatos 
-            ORDER BY nm_contato
-        """)
-        for row in cursor.fetchall():
-            # Formatar celular com DDD
-            id_contato, nome, ddd, telefone, celular, depto, email = row
-            celular_formatado = f"{celular or ''}"
-            self.tree.insert("", "end", values=(id_contato, nome, ddd, telefone, celular_formatado, depto, email))
-        conn.close()
+            
+        try:
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id_contato, nm_contato, nr_ddd_fone, nr_telefone, nr_celular, nm_depto, nm_email 
+                FROM contatos 
+                ORDER BY nm_contato
+            """)
+            
+            resultados = cursor.fetchall()
+            for row in resultados:
+                # Formatar celular com DDD
+                id_contato, nome, ddd, telefone, celular, depto, email = row
+                celular_formatado = f"{celular or ''}"
+                self.tree.insert("", "end", values=(id_contato, nome, ddd, telefone, celular_formatado, depto, email))
+            
+            conn.close()
+            self.show_message(f"Carregados {len(resultados)} contatos", "success")
+            
+        except sqlite3.Error as e:
+            self.show_message(f"ERRO ao carregar contatos: {str(e)}", "error")
 
     def on_select(self, event):
         item = self.tree.item(self.tree.focus())
@@ -238,45 +327,52 @@ class ContatoWindow(ttkb.Toplevel):
             return
         
         contato_id = item["values"][0]
+        nome_selecionado = item["values"][1]
         
-        # Buscar todos os dados do contato selecionado
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT nm_contato, nr_ddd_fone, nr_telefone, nr_ramal, nr_ddd_cel, nr_celular, nm_depto, nm_email
-            FROM contatos 
-            WHERE id_contato = ?
-        """, (contato_id,))
-        
-        result = cursor.fetchone()
-        conn.close()
-        
-        if result:
-            nome, ddd, telefone, ramal, ddd_cel, celular, depto, email = result
+        try:
+            # Buscar todos os dados do contato selecionado
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT nm_contato, nr_ddd_fone, nr_telefone, nr_ramal, nr_ddd_cel, nr_celular, nm_depto, nm_email
+                FROM contatos 
+                WHERE id_contato = ?
+            """, (contato_id,))
             
-            self.entry_nome.delete(0, tk.END)
-            self.entry_nome.insert(0, nome or "")
+            result = cursor.fetchone()
+            conn.close()
             
-            self.entry_ddd.delete(0, tk.END)
-            self.entry_ddd.insert(0, ddd or "")
-            
-            self.entry_telefone.delete(0, tk.END)
-            self.entry_telefone.insert(0, telefone or "")
-            
-            self.entry_ramal.delete(0, tk.END)
-            self.entry_ramal.insert(0, ramal or "")
-            
-            self.entry_ddd_cel.delete(0, tk.END)
-            self.entry_ddd_cel.insert(0, ddd_cel or "")
-            
-            self.entry_celular.delete(0, tk.END)
-            self.entry_celular.insert(0, celular or "")
-            
-            self.entry_depto.delete(0, tk.END)
-            self.entry_depto.insert(0, depto or "")
-            
-            self.entry_email.delete(0, tk.END)
-            self.entry_email.insert(0, email or "")
+            if result:
+                nome, ddd, telefone, ramal, ddd_cel, celular, depto, email = result
+                
+                self.entry_nome.delete(0, tk.END)
+                self.entry_nome.insert(0, nome or "")
+                
+                self.entry_ddd.delete(0, tk.END)
+                self.entry_ddd.insert(0, ddd or "")
+                
+                self.entry_telefone.delete(0, tk.END)
+                self.entry_telefone.insert(0, telefone or "")
+                
+                self.entry_ramal.delete(0, tk.END)
+                self.entry_ramal.insert(0, ramal or "")
+                
+                self.entry_ddd_cel.delete(0, tk.END)
+                self.entry_ddd_cel.insert(0, ddd_cel or "")
+                
+                self.entry_celular.delete(0, tk.END)
+                self.entry_celular.insert(0, celular or "")
+                
+                self.entry_depto.delete(0, tk.END)
+                self.entry_depto.insert(0, depto or "")
+                
+                self.entry_email.delete(0, tk.END)
+                self.entry_email.insert(0, email or "")
+                
+                self.show_message(f"Contato selecionado: {nome_selecionado}", "info")
+                
+        except sqlite3.Error as e:
+            self.show_message(f"ERRO ao carregar dados do contato: {str(e)}", "error")
 
     def limpar_campos(self):
         """Limpa todos os campos do formulário"""
@@ -298,6 +394,9 @@ class ContatoWindow(ttkb.Toplevel):
             self.tree.focus(primeiro_item)
             self.tree.see(primeiro_item)
             self.on_select(None)
+            self.show_message("Navegado para o primeiro contato", "info")
+        else:
+            self.show_message("Nenhum contato disponível", "warning")
 
     def ir_ultimo(self):
         """Navega para o último registro na lista"""
@@ -308,6 +407,9 @@ class ContatoWindow(ttkb.Toplevel):
             self.tree.focus(ultimo_item)
             self.tree.see(ultimo_item)
             self.on_select(None)
+            self.show_message("Navegado para o último contato", "info")
+        else:
+            self.show_message("Nenhum contato disponível", "warning")
 
     def ir_anterior(self):
         """Navega para o registro anterior na lista"""
@@ -315,14 +417,19 @@ class ContatoWindow(ttkb.Toplevel):
         if not selecionado:
             self.ir_primeiro()
             return
+            
         items = self.tree.get_children()
         idx = items.index(selecionado[0])
+        
         if idx > 0:
             anterior = items[idx - 1]
             self.tree.selection_set(anterior)
             self.tree.focus(anterior)
             self.tree.see(anterior)
             self.on_select(None)
+            self.show_message("Navegado para o contato anterior", "info")
+        else:
+            self.show_message("Já está no primeiro contato", "warning")
 
     def ir_proximo(self):
         """Navega para o próximo registro na lista"""
@@ -330,11 +437,16 @@ class ContatoWindow(ttkb.Toplevel):
         if not selecionado:
             self.ir_primeiro()
             return
+            
         items = self.tree.get_children()
         idx = items.index(selecionado[0])
+        
         if idx < len(items) - 1:
             proximo = items[idx + 1]
             self.tree.selection_set(proximo)
             self.tree.focus(proximo)
             self.tree.see(proximo)
             self.on_select(None)
+            self.show_message("Navegado para o próximo contato", "info")
+        else:
+            self.show_message("Já está no último contato", "warning")

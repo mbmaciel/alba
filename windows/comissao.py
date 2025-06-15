@@ -1,7 +1,6 @@
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
-from tkinter import messagebox
 from estilo import aplicar_estilo
 import sqlite3
 
@@ -19,9 +18,13 @@ class ComissaoWindow(ttkb.Toplevel):
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Barra de ferramentas no topo
-        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
-        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+        # Frame para barra de ferramentas e mensagens
+        top_frame = ttkb.Frame(main_frame)
+        top_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Barra de ferramentas no topo (lado esquerdo)
+        toolbar_frame = ttkb.Frame(top_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         # Container para os botões grudados
         button_container = ttkb.Frame(toolbar_frame)
@@ -49,6 +52,21 @@ class ComissaoWindow(ttkb.Toplevel):
         ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Área de mensagens (lado direito)
+        message_frame = ttkb.Frame(top_frame, relief="sunken", borderwidth=2, padding=5)
+        message_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+
+        ttkb.Label(message_frame, text="Mensagens:", font=("Arial", 8, "bold")).pack(anchor=tk.W)
+        
+        self.message_label = ttkb.Label(
+            message_frame, 
+            text="Sistema pronto para uso", 
+            font=("Arial", 9),
+            foreground="blue",
+            wraplength=300
+        )
+        self.message_label.pack(anchor=tk.W, fill=tk.BOTH, expand=True)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -98,6 +116,23 @@ class ComissaoWindow(ttkb.Toplevel):
 
         self.carregar()
 
+    def show_message(self, message, msg_type="info"):
+        """Exibe mensagem na área de mensagens"""
+        colors = {
+            "info": "blue",
+            "success": "green", 
+            "warning": "orange",
+            "error": "red"
+        }
+        
+        self.message_label.config(
+            text=message,
+            foreground=colors.get(msg_type, "blue")
+        )
+        
+        # Auto-limpar mensagem após 5 segundos
+        self.after(5000, lambda: self.message_label.config(text="Sistema pronto para uso", foreground="blue"))
+
     def conectar(self):
         return sqlite3.connect(DB_PATH)
 
@@ -105,6 +140,7 @@ class ComissaoWindow(ttkb.Toplevel):
         """Limpa os campos para inclusão de novo registro"""
         self.limpar()
         self.entry_ini.focus()
+        self.show_message("Campos limpos. Digite os dados da nova faixa de comissão.", "info")
 
     def salvar(self):
         try:
@@ -112,58 +148,82 @@ class ComissaoWindow(ttkb.Toplevel):
             fim = float(self.entry_fim.get())
             comissao = float(self.entry_comissao.get())
         except ValueError:
-            messagebox.showerror("Erro", "Insira valores numéricos válidos.")
+            self.show_message("ERRO: Insira valores numéricos válidos.", "error")
             return
 
         if ini < 0 or fim < 0 or comissao < 0:
-            messagebox.showwarning("Atenção", "Os valores devem ser positivos.")
+            self.show_message("ATENÇÃO: Os valores devem ser positivos.", "warning")
             return
 
         if ini > fim:
-            messagebox.showwarning("Atenção", "O desconto inicial deve ser menor ou igual ao desconto final.")
+            self.show_message("ATENÇÃO: O desconto inicial deve ser menor ou igual ao desconto final.", "warning")
             return
 
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO comissao (pc_desc_ini, pc_desc_fim, pc_comissao)
-            VALUES (?, ?, ?)
-        """, (ini, fim, comissao))
-        conn.commit()
-        conn.close()
-        self.limpar()
-        self.carregar()
-        messagebox.showinfo("Sucesso", "Faixa de comissão salva com sucesso!")
+        try:
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO comissao (pc_desc_ini, pc_desc_fim, pc_comissao)
+                VALUES (?, ?, ?)
+            """, (ini, fim, comissao))
+            conn.commit()
+            conn.close()
+            self.limpar()
+            self.carregar()
+            self.show_message(f"Faixa de comissão {ini}% - {fim}% salva com sucesso!", "success")
+        except sqlite3.Error as e:
+            self.show_message(f"ERRO ao salvar faixa de comissão: {str(e)}", "error")
 
     def remover(self):
         item = self.tree.focus()
         if not item:
-            messagebox.showwarning("Atenção", "Selecione uma faixa de comissão para remover.")
+            self.show_message("ATENÇÃO: Selecione uma faixa de comissão para remover.", "warning")
             return
-            
-        id_comissao = self.tree.item(item)["values"][0]
         
-        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover esta faixa de comissão?")
-        if not resposta:
-            return
-            
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM comissao WHERE id_comissao = ?", (id_comissao,))
-        conn.commit()
-        conn.close()
-        self.carregar()
-        self.limpar()
-        messagebox.showinfo("Sucesso", "Faixa de comissão removida com sucesso!")
+        item_values = self.tree.item(item)["values"]
+        id_comissao = item_values[0]
+        desc_ini = item_values[1]
+        desc_fim = item_values[2]
+        
+        # Confirmar remoção através da área de mensagens
+        self.show_message(f"Pressione novamente 'Remover' para confirmar exclusão da faixa {desc_ini}% - {desc_fim}%", "warning")
+        
+        # Alterar temporariamente o comando do botão para confirmação
+        def confirmar_remocao():
+            try:
+                conn = self.conectar()
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM comissao WHERE id_comissao = ?", (id_comissao,))
+                conn.commit()
+                conn.close()
+                self.carregar()
+                self.limpar()
+                self.show_message(f"Faixa de comissão {desc_ini}% - {desc_fim}% removida com sucesso!", "success")
+            except sqlite3.Error as e:
+                self.show_message(f"ERRO ao remover faixa de comissão: {str(e)}", "error")
+            finally:
+                # Restaurar comando original do botão
+                self.btn_remover.config(command=self.remover)
+        
+        # Alterar comando do botão temporariamente
+        self.btn_remover.config(command=confirmar_remocao)
+        
+        # Restaurar comando original após 10 segundos
+        self.after(10000, lambda: self.btn_remover.config(command=self.remover))
 
     def carregar(self):
         self.tree.delete(*self.tree.get_children())
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id_comissao, pc_desc_ini, pc_desc_fim, pc_comissao FROM comissao ORDER BY pc_desc_ini")
-        for row in cursor.fetchall():
-            self.tree.insert("", "end", values=row)
-        conn.close()
+        try:
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id_comissao, pc_desc_ini, pc_desc_fim, pc_comissao FROM comissao ORDER BY pc_desc_ini")
+            resultados = cursor.fetchall()
+            for row in resultados:
+                self.tree.insert("", "end", values=row)
+            conn.close()
+            self.show_message(f"Carregadas {len(resultados)} faixas de comissão", "success")
+        except sqlite3.Error as e:
+            self.show_message(f"ERRO ao carregar faixas de comissão: {str(e)}", "error")
 
     def on_select(self, event):
         item = self.tree.item(self.tree.focus())
@@ -178,6 +238,7 @@ class ComissaoWindow(ttkb.Toplevel):
             self.entry_fim.insert(0, str(fim))
             self.entry_comissao.delete(0, tk.END)
             self.entry_comissao.insert(0, str(comissao))
+            self.show_message(f"Faixa selecionada: {ini}% - {fim}%", "info")
 
     def limpar(self):
         """Limpa todos os campos do formulário"""
@@ -194,7 +255,10 @@ class ComissaoWindow(ttkb.Toplevel):
             self.tree.focus(primeiro_item)
             self.tree.see(primeiro_item)
             self.on_select(None)
-            
+            self.show_message("Navegado para a primeira faixa de comissão", "info")
+        else:
+            self.show_message("Nenhuma faixa de comissão disponível", "warning")
+        
     def ir_ultimo(self):
         """Navega para o último registro na lista"""
         items = self.tree.get_children()
@@ -204,14 +268,17 @@ class ComissaoWindow(ttkb.Toplevel):
             self.tree.focus(ultimo_item)
             self.tree.see(ultimo_item)
             self.on_select(None)
-            
+            self.show_message("Navegado para a última faixa de comissão", "info")
+        else:
+            self.show_message("Nenhuma faixa de comissão disponível", "warning")
+        
     def ir_anterior(self):
         """Navega para o registro anterior na lista"""
         selecionado = self.tree.selection()
         if not selecionado:
             self.ir_primeiro()
             return
-            
+        
         items = self.tree.get_children()
         idx = items.index(selecionado[0])
         
@@ -221,14 +288,17 @@ class ComissaoWindow(ttkb.Toplevel):
             self.tree.focus(anterior)
             self.tree.see(anterior)
             self.on_select(None)
-            
+            self.show_message("Navegado para a faixa anterior", "info")
+        else:
+            self.show_message("Já está na primeira faixa de comissão", "warning")
+        
     def ir_proximo(self):
         """Navega para o próximo registro na lista"""
         selecionado = self.tree.selection()
         if not selecionado:
             self.ir_primeiro()
             return
-            
+        
         items = self.tree.get_children()
         idx = items.index(selecionado[0])
         
@@ -238,3 +308,6 @@ class ComissaoWindow(ttkb.Toplevel):
             self.tree.focus(proximo)
             self.tree.see(proximo)
             self.on_select(None)
+            self.show_message("Navegado para a próxima faixa", "info")
+        else:
+            self.show_message("Já está na última faixa de comissão", "warning")

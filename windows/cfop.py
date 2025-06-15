@@ -123,17 +123,57 @@ class CfopWindow(ttkb.Toplevel):
         conn = self.conectar()
         cursor = conn.cursor()
         try:
-            cursor.execute("INSERT OR REPLACE INTO cfop (cd_cfop, nm_cfop, fl_impostos, fl_kardex) VALUES (?, ?, ?, ?)",
-                           (codigo, descricao, impostos, kardex))
+            # Verificar se o registro já existe
+            cursor.execute("SELECT recnum FROM cfop WHERE cd_cfop = ?", (codigo,))
+            registro_existente = cursor.fetchone()
+            
+            is_update = registro_existente is not None
+            
+            if is_update:
+                # Atualizar registro existente
+                cursor.execute("""UPDATE cfop 
+                                SET nm_cfop = ?, fl_impostos = ?, fl_kardex = ? 
+                                WHERE cd_cfop = ?""",
+                             (descricao, impostos, kardex, codigo))
+                messagebox.showinfo("Sucesso", "CFOP atualizado com sucesso!")
+            else:
+                # Obter o próximo recnum
+                cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM cfop")
+                proximo_recnum = cursor.fetchone()[0]
+                
+                # Inserir novo registro
+                cursor.execute("""INSERT INTO cfop (recnum, cd_cfop, nm_cfop, fl_impostos, fl_kardex) 
+                                VALUES (?, ?, ?, ?, ?)""",
+                             (proximo_recnum, codigo, descricao, impostos, kardex))
+                messagebox.showinfo("Sucesso", "CFOP salvo com sucesso!")
+            
             conn.commit()
-            messagebox.showinfo("Sucesso", "CFOP salvo com sucesso!")
         except Exception as e:
             messagebox.showerror("Erro ao salvar", str(e))
+            return
         finally:
             conn.close()
 
-        self.limpar()
+        # Recarregar a lista
         self.carregar()
+        
+        # Se foi uma inserção, limpar os campos
+        # Se foi uma atualização, manter o registro selecionado
+        if not is_update:
+            self.limpar()
+        else:
+            # Reselecionar o item atualizado na lista
+            self.selecionar_item_por_codigo(codigo)
+
+    def selecionar_item_por_codigo(self, codigo):
+        """Seleciona um item na lista pelo código CFOP"""
+        for item in self.tree.get_children():
+            valores = self.tree.item(item)["values"]
+            if valores and str(valores[0]) == str(codigo):
+                self.tree.selection_set(item)
+                self.tree.focus(item)
+                self.tree.see(item)
+                break
 
     def remover(self):
         item = self.tree.focus()
