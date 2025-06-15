@@ -3,11 +3,10 @@ from ttkbootstrap.constants import *
 import tkinter as tk
 from tkinter import messagebox
 from estilo import aplicar_estilo
+from windows.base_window import BaseWindow
 import sqlite3
 
-DB_PATH = "alba_zip_extracted/alba.sqlite"
-
-class ItensProducaoWindow(ttkb.Toplevel):
+class ItensProducaoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
@@ -141,9 +140,6 @@ class ItensProducaoWindow(ttkb.Toplevel):
         self.carregar_clientes()
         self.carregar_of()
         self.carregar()
-
-    def conectar(self):
-        return sqlite3.connect(DB_PATH)
 
     def carregar_produtos(self):
         conn = self.conectar()

@@ -2,11 +2,10 @@ import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
 from estilo import aplicar_estilo
+from windows.base_window import BaseWindow
 import sqlite3
 
-DB_PATH = "alba_zip_extracted/alba.sqlite"
-
-class CepWindow(ttkb.Toplevel):
+class CepWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
@@ -132,25 +131,6 @@ class CepWindow(ttkb.Toplevel):
 
         self.carregar()
 
-    def show_message(self, message, msg_type="info"):
-        """Exibe mensagem na área de mensagens"""
-        colors = {
-            "info": "blue",
-            "success": "green", 
-            "warning": "orange",
-            "error": "red"
-        }
-        
-        self.message_label.config(
-            text=message,
-            foreground=colors.get(msg_type, "blue")
-        )
-        
-        # Auto-limpar mensagem após 5 segundos
-        self.after(5000, lambda: self.message_label.config(text="Sistema pronto para uso", foreground="blue"))
-
-    def conectar(self):
-        return sqlite3.connect(DB_PATH)
 
     def buscar_cep(self):
         cep_valor = self.entry_busca.get()
@@ -267,68 +247,3 @@ class CepWindow(ttkb.Toplevel):
         self.entry_bairro.config(state="readonly")
         self.entry_endereco.config(state="readonly")
         
-    def ir_primeiro(self):
-        """Navega para o primeiro registro na lista"""
-        items = self.tree.get_children()
-        if items:
-            primeiro_item = items[0]
-            self.tree.selection_set(primeiro_item)
-            self.tree.focus(primeiro_item)
-            self.tree.see(primeiro_item)
-            self.on_select(None)
-            self.show_message("Navegado para o primeiro CEP", "info")
-        else:
-            self.show_message("Nenhum CEP disponível", "warning")
-        
-    def ir_ultimo(self):
-        """Navega para o último registro na lista"""
-        items = self.tree.get_children()
-        if items:
-            ultimo_item = items[-1]
-            self.tree.selection_set(ultimo_item)
-            self.tree.focus(ultimo_item)
-            self.tree.see(ultimo_item)
-            self.on_select(None)
-            self.show_message("Navegado para o último CEP", "info")
-        else:
-            self.show_message("Nenhum CEP disponível", "warning")
-        
-    def ir_anterior(self):
-        """Navega para o registro anterior na lista"""
-        selecionado = self.tree.selection()
-        if not selecionado:
-            self.ir_primeiro()
-            return
-        
-        items = self.tree.get_children()
-        idx = items.index(selecionado[0])
-        
-        if idx > 0:
-            anterior = items[idx - 1]
-            self.tree.selection_set(anterior)
-            self.tree.focus(anterior)
-            self.tree.see(anterior)
-            self.on_select(None)
-            self.show_message("Navegado para o CEP anterior", "info")
-        else:
-            self.show_message("Já está no primeiro CEP", "warning")
-        
-    def ir_proximo(self):
-        """Navega para o próximo registro na lista"""
-        selecionado = self.tree.selection()
-        if not selecionado:
-            self.ir_primeiro()
-            return
-        
-        items = self.tree.get_children()
-        idx = items.index(selecionado[0])
-        
-        if idx < len(items) - 1:
-            proximo = items[idx + 1]
-            self.tree.selection_set(proximo)
-            self.tree.focus(proximo)
-            self.tree.see(proximo)
-            self.on_select(None)
-            self.show_message("Navegado para o próximo CEP", "info")
-        else:
-            self.show_message("Já está no último CEP", "warning")
