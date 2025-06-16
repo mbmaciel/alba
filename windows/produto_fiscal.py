@@ -10,9 +10,8 @@ class ProdutoFiscalWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Cadastro Produto Fiscal")
-        self.geometry("1200x800")
-        self.resizable(True, True)
+        self.set_title("Cadastro Produto Fiscal")
+        self.config(width=1200, height=800)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

@@ -8,9 +8,8 @@ from windows.base_window import BaseWindow
 class TextosWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
-        self.title("Cadastro de Textos")
-        self.geometry("900x700")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Textos")
+        self.config(width=900, height=700)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

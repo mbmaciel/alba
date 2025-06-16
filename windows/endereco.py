@@ -9,9 +9,8 @@ class EnderecoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Cadastro de Endereços (alba0002)")
-        self.geometry("900x550")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Endereços (alba0002)")
+        self.config(width=900, height=550)
 
         self.current_recnum = None
 

@@ -9,9 +9,8 @@ from windows.base_window import BaseWindow
 class OrdemCompraWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
-        self.title("Cadastro de Ordens de Compra (alba0010)")
-        self.geometry("1000x650")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Ordens de Compra (alba0010)")
+        self.config(width=1000, height=650)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

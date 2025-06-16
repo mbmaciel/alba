@@ -9,9 +9,8 @@ class EmpresaWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Cadastro de Empresas")
-        self.geometry("900x700")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Empresas")
+        self.config(width=900, height=700)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

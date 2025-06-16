@@ -22,6 +22,7 @@ from windows.system_config import SystemConfigWindow
 from windows.itens_producao import ItensProducaoWindow
 from windows.tipo import TipoWindow
 from windows.textos import TextosWindow
+from mdi import MDIContainer
 
 class App(ttkb.Window):
     def __init__(self):
@@ -29,6 +30,9 @@ class App(ttkb.Window):
         aplicar_estilo(self)
         self.title("Sistema Alba")
         self.geometry("1100x600")
+
+        self.mdi = MDIContainer(self)
+        self.mdi.pack(fill=tk.BOTH, expand=True)
 
         self.create_menus()
 
@@ -75,61 +79,61 @@ class App(ttkb.Window):
         self.config(menu=menubar)
 
     def abrir_empresas(self):
-        EmpresaWindow(self)
+        EmpresaWindow(self.mdi)
 
     def abrir_contatos(self):
-        ContatoWindow(self)
+        ContatoWindow(self.mdi)
 
     def abrir_usuarios(self):
-        UsuarioWindow(self)
+        UsuarioWindow(self.mdi)
 
     def abrir_cep(self):
-        CepWindow(self)
+        CepWindow(self.mdi)
 
     def abrir_ncm(self):
-        NcmWindow(self)
+        NcmWindow(self.mdi)
 
     def abrir_ativid(self):
-        AtividWindow(self)
+        AtividWindow(self.mdi)
 
     def abrir_cfop(self):
-        CfopWindow(self)
+        CfopWindow(self.mdi)
 
     def abrir_tiponf(self):
-        TiponfWindow(self)
+        TiponfWindow(self.mdi)
 
     def abrir_natop(self):
-        NatopWindow(self)
+        NatopWindow(self.mdi)
     
     def abrir_endereco(self):
-        EnderecoWindow(self)
+        EnderecoWindow(self.mdi)
     
     def abrir_pessoas(self):
-        PessoaWindow(self)
+        PessoaWindow(self.mdi)
 
     def abrir_produto_fiscal(self):
-        ProdutoFiscalWindow(self)
+        ProdutoFiscalWindow(self.mdi)
 
     def abrir_ordem_compra(self):
-        OrdemCompraWindow(self)
+        OrdemCompraWindow(self.mdi)
 
     def abrir_item_ordem_compra(self):
-        ItemOrdemCompraWindow(self)
+        ItemOrdemCompraWindow(self.mdi)
 
     def abrir_comissao(self):
-        ComissaoWindow(self)
+        ComissaoWindow(self.mdi)
 
     def abrir_system_config(self):
-        SystemConfigWindow(self)
+        SystemConfigWindow(self.mdi)
 
     def abrir_itens_producao(self):
-        ItensProducaoWindow(self)
+        ItensProducaoWindow(self.mdi)
 
     def abrir_tipo(self):
-        TipoWindow(self)
+        TipoWindow(self.mdi)
 
     def abrir_textos(self):
-        TextosWindow(self)
+        TextosWindow(self.mdi)
 
 if __name__ == "__main__":
     app = App()

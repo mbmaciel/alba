@@ -9,9 +9,8 @@ class CepWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Consulta de CEPs")
-        self.geometry("800x500")
-        self.resizable(False, False)
+        self.set_title("Consulta de CEPs")
+        self.config(width=800, height=500)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)
