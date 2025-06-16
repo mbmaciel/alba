@@ -10,9 +10,8 @@ class ItensProducaoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Itens de Produção (alba0009)")
-        self.geometry("1200x700")
-        self.resizable(False, False)
+        self.set_title("Itens de Produção (alba0009)")
+        self.config(width=1200, height=700)
         
         # Variável para armazenar o ID do item selecionado para edição
         self.item_selecionado = None

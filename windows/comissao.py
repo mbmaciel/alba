@@ -9,9 +9,8 @@ class ComissaoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Cadastro de Faixas de Comissão")
-        self.geometry("800x550")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Faixas de Comissão")
+        self.config(width=800, height=550)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

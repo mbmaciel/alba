@@ -9,9 +9,8 @@ class AtividWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Cadastro de Atividades")
-        self.geometry("700x500")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Atividades")
+        self.config(width=700, height=500)
         self.recnum = None
 
         # Frame principal

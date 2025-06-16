@@ -1,6 +1,7 @@
 import os
 import ttkbootstrap as ttkb
 from tkinter import messagebox
+from mdi import MDIChild
 import sqlite3
 
 # Allow the SQLite path to be configured via the ``ALBA_DB_PATH`` environment
@@ -8,11 +9,15 @@ import sqlite3
 # not set.
 DB_PATH = os.environ.get("ALBA_DB_PATH", "alba_zip_extracted/alba.sqlite")
 
-class BaseWindow(ttkb.Toplevel):
+class BaseWindow(MDIChild):
     """Janela base com utilidades comuns."""
 
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
+
+    def set_title(self, text):
+        """Wrapper to update the title label."""
+        super().set_title(text)
 
     def conectar(self):
         """Retorna uma conexão com o banco de dados."""

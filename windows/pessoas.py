@@ -10,9 +10,8 @@ class PessoaWindow(BaseWindow):
         super().__init__(master)
         self.id_pessoa_atual = None
         aplicar_estilo(self)
-        self.title("Cadastro de Pessoas (alba0001)")
-        self.geometry("1100x700")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Pessoas (alba0001)")
+        self.config(width=1100, height=700)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

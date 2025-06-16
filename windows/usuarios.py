@@ -10,9 +10,8 @@ class UsuarioWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Cadastro de Usuários")
-        self.geometry("700x500")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Usuários")
+        self.config(width=700, height=500)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

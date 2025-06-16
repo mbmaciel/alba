@@ -10,9 +10,8 @@ class SystemConfigWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Configurações do Sistema")
-        self.geometry("900x700")
-        self.resizable(False, False)
+        self.set_title("Configurações do Sistema")
+        self.config(width=900, height=700)
 
         self.campos = {}
         

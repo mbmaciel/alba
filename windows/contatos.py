@@ -9,9 +9,8 @@ class ContatoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Cadastro de Contatos")
-        self.geometry("900x600")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Contatos")
+        self.config(width=900, height=600)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

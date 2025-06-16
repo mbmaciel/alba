@@ -10,9 +10,8 @@ class ItemOrdemCompraWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Itens da Ordem de Compra (alba0011)")
-        self.geometry("1100x650")
-        self.resizable(False, False)
+        self.set_title("Itens da Ordem de Compra (alba0011)")
+        self.config(width=1100, height=650)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

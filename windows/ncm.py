@@ -10,9 +10,8 @@ class NcmWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
         aplicar_estilo(self)
-        self.title("Consulta de NCM")
-        self.geometry("700x500")
-        self.resizable(False, False)
+        self.set_title("Consulta de NCM")
+        self.config(width=700, height=500)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)

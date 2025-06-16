@@ -8,9 +8,8 @@ from windows.base_window import BaseWindow
 class TipoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
-        self.title("Cadastro de Tipos de Clientes")
-        self.geometry("700x500")
-        self.resizable(False, False)
+        self.set_title("Cadastro de Tipos de Clientes")
+        self.config(width=700, height=500)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)
