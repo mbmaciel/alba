@@ -1,7 +1,7 @@
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
-import sqlite3
+from tkinter import messagebox
 from estilo import aplicar_estilo
 from windows.base_window import BaseWindow
 
@@ -112,29 +112,14 @@ class AtividWindow(BaseWindow):
         if not desc:
             self.show_message("Descrição obrigatória.", "warning")
             return
-
-        try:
-            conn = self.conectar()
-            cursor = conn.cursor()
-
-            if self.recnum is None:
-                # Inserção de novo registro
-                cursor.execute("INSERT INTO ativid (nm_atividade) VALUES (?)", (desc,))
-                msg = "Atividade inserida com sucesso!"
-            else:
-                # Atualização de registro existente
-                cursor.execute("UPDATE ativid SET nm_atividade = ? WHERE id_atividade = ?",
-                             (desc, self.recnum))
-                msg = "Atividade atualizada com sucesso!"
-
-            conn.commit()
-            conn.close()
-            self.limpar()
-            self.carregar()
-            self.show_message(msg, "success")
-
-        except sqlite3.Error as e:
-            self.show_message(f"Erro ao salvar: {str(e)}", "error")
+        conn = self.conectar()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO ativid (nm_atividade) VALUES (?)", (desc,))
+        conn.commit()
+        conn.close()
+        self.limpar()
+        self.carregar()
+        messagebox.showinfo("Sucesso", "Atividade salva com sucesso!")
 
     def remover(self):
         item = self.tree.focus()
@@ -143,27 +128,19 @@ class AtividWindow(BaseWindow):
             return
 
         id_atividade = self.tree.item(item)["values"][0]
-
-        # Confirmar remoção através da área de mensagens
-        self.show_message("Pressione novamente 'Remover' para confirmar exclusão", "warning")
-
-        def confirmar_remocao():
-            try:
-                conn = self.conectar()
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM ativid WHERE id_atividade = ?", (id_atividade,))
-                conn.commit()
-                conn.close()
-                self.carregar()
-                self.limpar()
-                self.show_message("Atividade removida com sucesso!", "success")
-            except sqlite3.Error as e:
-                self.show_message(f"ERRO ao remover atividade: {str(e)}", "error")
-            finally:
-                self.btn_remover.config(command=self.remover)
-
-        self.btn_remover.config(command=confirmar_remocao)
-        self.after(10000, lambda: self.btn_remover.config(command=self.remover))
+        
+        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover esta atividade?")
+        if not resposta:
+            return
+            
+        conn = self.conectar()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM ativid WHERE id_atividade = ?", (id_atividade,))
+        conn.commit()
+        conn.close()
+        self.carregar()
+        self.limpar()
+        messagebox.showinfo("Sucesso", "Atividade removida com sucesso!")
 
     def carregar(self):
         try:
