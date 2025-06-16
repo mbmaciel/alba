@@ -1,7 +1,6 @@
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
-from tkinter import messagebox
 from estilo import aplicar_estilo
 from windows.base_window import BaseWindow
 
@@ -17,9 +16,13 @@ class AtividWindow(BaseWindow):
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Barra de ferramentas no topo
-        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
-        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+        # Frame para barra de ferramentas e mensagens
+        top_frame = ttkb.Frame(main_frame)
+        top_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Barra de ferramentas no topo (lado esquerdo)
+        toolbar_frame = ttkb.Frame(top_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         # Container para os botões grudados
         button_container = ttkb.Frame(toolbar_frame)
@@ -47,6 +50,19 @@ class AtividWindow(BaseWindow):
         ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Área de mensagens (lado direito)
+        message_frame = ttkb.Frame(top_frame, relief="sunken", borderwidth=2, padding=5)
+        message_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+        ttkb.Label(message_frame, text="Mensagens:", font=("Arial", 8, "bold")).pack(anchor=tk.W)
+        self.message_label = ttkb.Label(
+            message_frame,
+            text="Sistema pronto para uso",
+            font=("Arial", 9),
+            foreground="blue",
+            wraplength=300,
+        )
+        self.message_label.pack(anchor=tk.W, fill=tk.BOTH, expand=True)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -91,7 +107,7 @@ class AtividWindow(BaseWindow):
     def salvar(self):
         desc = self.entry_desc.get()
         if not desc:
-            messagebox.showwarning("Atenção", "Descrição obrigatória.")
+            self.show_message("Descrição obrigatória.", "warning")
             return
         conn = self.conectar()
         cursor = conn.cursor()
@@ -100,28 +116,36 @@ class AtividWindow(BaseWindow):
         conn.close()
         self.limpar()
         self.carregar()
-        messagebox.showinfo("Sucesso", "Atividade salva com sucesso!")
+        self.show_message("Atividade salva com sucesso!", "success")
 
     def remover(self):
         item = self.tree.focus()
         if not item:
-            messagebox.showwarning("Atenção", "Selecione uma atividade para remover.")
+            self.show_message("Selecione uma atividade para remover.", "warning")
             return
             
         id_atividade = self.tree.item(item)["values"][0]
         
-        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover esta atividade?")
-        if not resposta:
-            return
-            
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM ativid WHERE id_atividade = ?", (id_atividade,))
-        conn.commit()
-        conn.close()
-        self.carregar()
-        self.limpar()
-        messagebox.showinfo("Sucesso", "Atividade removida com sucesso!")
+        # Confirmar remoção através da área de mensagens
+        self.show_message("Pressione novamente 'Remover' para confirmar exclusão", "warning")
+
+        def confirmar_remocao():
+            try:
+                conn = self.conectar()
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM ativid WHERE id_atividade = ?", (id_atividade,))
+                conn.commit()
+                conn.close()
+                self.carregar()
+                self.limpar()
+                self.show_message("Atividade removida com sucesso!", "success")
+            except sqlite3.Error as e:
+                self.show_message(f"ERRO ao remover atividade: {str(e)}", "error")
+            finally:
+                self.btn_remover.config(command=self.remover)
+
+        self.btn_remover.config(command=confirmar_remocao)
+        self.after(10000, lambda: self.btn_remover.config(command=self.remover))
 
     def carregar(self):
         self.tree.delete(*self.tree.get_children())
