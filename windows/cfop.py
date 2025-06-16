@@ -1,7 +1,6 @@
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
-from tkinter import messagebox
 from estilo import aplicar_estilo
 from windows.base_window import BaseWindow
 
@@ -47,6 +46,24 @@ class CfopWindow(BaseWindow):
         ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Separador visual
+        separator2 = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator2.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+
+        # Container para busca
+        search_container = ttkb.Frame(toolbar_frame)
+        search_container.pack(side=tk.LEFT, padx=(10, 0))
+
+        self.entry_busca = ttkb.Entry(search_container, width=30)
+        self.entry_busca.pack(side=tk.LEFT, padx=(0, 5))
+
+        ttkb.Button(search_container, text="🔍", command=self.buscar, width=3).pack(side=tk.LEFT)
+        ttkb.Button(search_container, text="🔄", command=self.carregar, width=3).pack(side=tk.LEFT)
+
+        # Área de mensagem
+        self.lbl_mensagem = ttkb.Label(toolbar_frame, text="", padding=5)
+        self.lbl_mensagem.pack(side=tk.RIGHT)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -112,7 +129,7 @@ class CfopWindow(BaseWindow):
         kardex = self.entry_kardex.get().strip()
 
         if not codigo or not descricao:
-            messagebox.showwarning("Campos obrigatórios", "Código e descrição são obrigatórios.")
+            self.show_message("Código e descrição são obrigatórios.", "warning")
             return
 
         conn = self.conectar()
@@ -130,7 +147,7 @@ class CfopWindow(BaseWindow):
                                 SET nm_cfop = ?, fl_impostos = ?, fl_kardex = ? 
                                 WHERE cd_cfop = ?""",
                              (descricao, impostos, kardex, codigo))
-                messagebox.showinfo("Sucesso", "CFOP atualizado com sucesso!")
+                self.show_message("CFOP atualizado com sucesso!", "success")
             else:
                 # Obter o próximo recnum
                 cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM cfop")
@@ -140,11 +157,11 @@ class CfopWindow(BaseWindow):
                 cursor.execute("""INSERT INTO cfop (recnum, cd_cfop, nm_cfop, fl_impostos, fl_kardex) 
                                 VALUES (?, ?, ?, ?, ?)""",
                              (proximo_recnum, codigo, descricao, impostos, kardex))
-                messagebox.showinfo("Sucesso", "CFOP salvo com sucesso!")
+                self.show_message("CFOP salvo com sucesso!", "success")
             
             conn.commit()
         except Exception as e:
-            messagebox.showerror("Erro ao salvar", str(e))
+            self.show_message(f"Erro ao salvar: {str(e)}", "danger")
             return
         finally:
             conn.close()
@@ -173,23 +190,21 @@ class CfopWindow(BaseWindow):
     def remover(self):
         item = self.tree.focus()
         if not item:
-            messagebox.showwarning("Atenção", "Selecione um CFOP para remover.")
+            self.show_message("Selecione um CFOP para remover.", "warning")
             return
             
         codigo = self.tree.item(item)["values"][0]
         
-        resposta = messagebox.askyesno("Confirmar", f"Deseja realmente remover o CFOP {codigo}?")
-        if not resposta:
-            return
+        self.show_message(f"CFOP {codigo} removido com sucesso!", "success")
 
         conn = self.conectar()
         cursor = conn.cursor()
         try:
             cursor.execute("DELETE FROM cfop WHERE cd_cfop = ?", (codigo,))
             conn.commit()
-            messagebox.showinfo("Sucesso", "CFOP removido com sucesso!")
+            self.show_message("CFOP removido com sucesso!", "success")
         except Exception as e:
-            messagebox.showerror("Erro ao remover", str(e))
+            self.show_message(f"Erro ao remover: {str(e)}", "danger")
         finally:
             conn.close()
 
@@ -221,6 +236,34 @@ class CfopWindow(BaseWindow):
         self.entry_impostos.insert(0, impostos or "")
         
         self.entry_kardex.delete(0, tk.END)
+
+    def show_message(self, message, message_type="info"):
+        """Exibe uma mensagem na área de mensagens"""
+        self.lbl_mensagem.configure(text=message)
+        if message_type == "success":
+            self.lbl_mensagem.configure(bootstyle="success")
+        elif message_type == "danger":
+            self.lbl_mensagem.configure(bootstyle="danger")
+        elif message_type == "warning":
+            self.lbl_mensagem.configure(bootstyle="warning")
+        else:
+            self.lbl_mensagem.configure(bootstyle="info")
+
+    def buscar(self):
+        """Realiza a busca com base no texto inserido"""
+        termo = self.entry_busca.get().strip().lower()
+        self.tree.selection_remove(*self.tree.selection())
+
+        if not termo:
+            return
+
+        for item in self.tree.get_children():
+            valores = self.tree.item(item)["values"]
+            if any(str(valor).lower().find(termo) >= 0 for valor in valores):
+                self.tree.selection_add(item)
+                self.tree.focus(item)
+                self.tree.see(item)
+                break
         self.entry_kardex.insert(0, kardex or "")
 
     def limpar(self):
