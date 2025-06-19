@@ -127,7 +127,10 @@ class NcmWindow(BaseWindow):
         if existe:
             cursor.execute("UPDATE ncm SET nm_ncm = ? WHERE cd_ncm = ?", (descricao, codigo))
         else:
-            cursor.execute("INSERT INTO ncm (cd_ncm, nm_ncm) VALUES (?, ?)", (codigo, descricao))
+            # Obter o próximo valor de recnum
+            cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM ncm")
+            next_recnum = cursor.fetchone()[0]
+            cursor.execute("INSERT INTO ncm (recnum, cd_ncm, nm_ncm) VALUES (?, ?, ?)", (next_recnum, codigo, descricao))
 
         conn.commit()
         conn.close()

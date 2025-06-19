@@ -8,6 +8,7 @@ import sqlite3
 class ContatoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
+        self.current_id = None  # Para controlar inserção/atualização
         aplicar_estilo(self)
         self.set_title("Cadastro de Contatos")
         self.config(width=900, height=600)
@@ -211,15 +212,23 @@ class ContatoWindow(BaseWindow):
         try:
             cursor = conn.cursor()
             
-            # Get next recnum value
-            cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM contatos")
-            next_recnum = cursor.fetchone()[0]
-            
-            # Insert without specifying id_contato (let it auto-increment)
-            cursor.execute("""
-                INSERT INTO contatos (recnum, nm_contato, nr_ddd_fone, nr_telefone, nr_ramal, nr_ddd_cel, nr_celular, nm_depto, nm_email) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (next_recnum, nome, ddd, telefone, ramal, ddd_cel, celular, depto, email))
+            if self.current_id is None:
+                # Novo registro - INSERT
+                cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM contatos")
+                next_recnum = cursor.fetchone()[0]
+
+                cursor.execute("""
+                    INSERT INTO contatos (recnum, nm_contato, nr_ddd_fone, nr_telefone, nr_ramal, nr_ddd_cel, nr_celular, nm_depto, nm_email)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (next_recnum, nome, ddd, telefone, ramal, ddd_cel, celular, depto, email))
+            else:
+                # Atualização - UPDATE
+                cursor.execute("""
+                    UPDATE contatos SET
+                        nm_contato=?, nr_ddd_fone=?, nr_telefone=?, nr_ramal=?,
+                        nr_ddd_cel=?, nr_celular=?, nm_depto=?, nm_email=?
+                    WHERE id_contato=?
+                """, (nome, ddd, telefone, ramal, ddd_cel, celular, depto, email, self.current_id))
             
             conn.commit()
             self.limpar_campos()
@@ -306,6 +315,7 @@ class ContatoWindow(BaseWindow):
             return
         
         contato_id = item["values"][0]
+        self.current_id = contato_id  # Armazenar o ID para edição
         nome_selecionado = item["values"][1]
         
         try:
@@ -355,6 +365,7 @@ class ContatoWindow(BaseWindow):
 
     def limpar_campos(self):
         """Limpa todos os campos do formulário"""
+        self.current_id = None
         self.entry_nome.delete(0, tk.END)
         self.entry_ddd.delete(0, tk.END)
         self.entry_telefone.delete(0, tk.END)

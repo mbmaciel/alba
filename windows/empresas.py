@@ -8,6 +8,7 @@ import sqlite3
 class EmpresaWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
+        self.current_id = None  # Add this line at the beginning of __init__
         aplicar_estilo(self)
         self.set_title("Cadastro de Empresas")
         self.config(width=900, height=700)
@@ -167,41 +168,64 @@ class EmpresaWindow(BaseWindow):
         self.entry_razao.focus()
 
     def salvar_empresa(self):
-        dados = (
-            self.entry_razao.get(),
-            self.entry_fantasia.get(),
-            self.entry_cnpj.get(),
-            self.entry_ie.get(),
-            self.entry_im.get(),
-            self.entry_cep.get(),
-            self.entry_numero.get(),
-            self.entry_complemento.get(),
-            self.entry_jucesp_cad.get(),
-            self.entry_dt_cad.get(),
-            self.entry_jucesp_alt.get(),
-            self.entry_dt_alt.get()
-        )
-
-        if not dados[0] or not dados[2]:
-            self.show_message("Preencha os campos obrigatórios: Razão Social e CNPJ.", "warning")
-            return
-
         try:
+            dados = (
+                self.entry_razao.get(),
+                self.entry_fantasia.get(),
+                self.entry_cnpj.get(),
+                self.entry_ie.get(),
+                self.entry_im.get(),
+                self.entry_cep.get(),
+                self.entry_numero.get(),
+                self.entry_complemento.get(),
+                self.entry_jucesp_cad.get(),
+                self.entry_dt_cad.get(),
+                self.entry_jucesp_alt.get(),
+                self.entry_dt_alt.get()
+            )
+
+            if not dados[0] or not dados[2]:
+                self.show_message("Preencha os campos obrigatórios: Razão Social e CNPJ.", "warning")
+                return
+
             conn = self.conectar()
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO empresas (nm_razao, nm_fantasia, nr_cnpj, nr_ie, nr_im, cd_cep,
-                                    nr_numero, nm_complemento, nr_jucesp_cad, dt_jucesp_cad,
-                                    nr_jucesp_alt, dt_jucesp_alt, recnum)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(recnum), 0) + 1 FROM empresas))
-            """, dados)
-            conn.commit()
-            conn.close()
-            self.limpar_campos()
-            self.carregar_empresas()
-            self.show_message("Empresa salva com sucesso!", "success")
-        except sqlite3.Error as e:
-            self.show_message(f"Erro ao salvar empresa: {str(e)}", "error")
+
+            try:
+                if self.current_id is None:
+                    # Novo registro - INSERT
+                    cursor.execute("""
+                        INSERT INTO empresas (nm_razao, nm_fantasia, nr_cnpj, nr_ie, nr_im, cd_cep,
+                                            nr_numero, nm_complemento, nr_jucesp_cad, dt_jucesp_cad,
+                                            nr_jucesp_alt, dt_jucesp_alt, recnum)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                                (SELECT COALESCE(MAX(recnum), 0) + 1 FROM empresas))
+                    """, dados)
+                    self.show_message("Empresa incluída com sucesso!", "success")
+                else:
+                    # Atualização - UPDATE
+                    cursor.execute("""
+                        UPDATE empresas SET
+                            nm_razao=?, nm_fantasia=?, nr_cnpj=?, nr_ie=?, nr_im=?, cd_cep=?,
+                            nr_numero=?, nm_complemento=?, nr_jucesp_cad=?, dt_jucesp_cad=?,
+                            nr_jucesp_alt=?, dt_jucesp_alt=?
+                        WHERE id_empresa=?
+                    """, dados + (self.current_id,))
+                    self.show_message("Empresa atualizada com sucesso!", "success")
+
+                conn.commit()
+                self.limpar_campos()
+                self.carregar_empresas()
+                self.current_id = None
+
+            except sqlite3.Error as e:
+                self.show_message(f"Erro ao salvar empresa: {str(e)}", "error")
+                conn.rollback()
+            finally:
+                conn.close()
+
+        except Exception as e:
+            self.show_message(f"Erro inesperado: {str(e)}", "error")
 
     def remover_empresa(self):
         selecionado = self.tree.focus()
@@ -235,60 +259,65 @@ class EmpresaWindow(BaseWindow):
         conn.close()
 
     def on_select(self, event):
-        item = self.tree.item(self.tree.focus())
-        if not item:
-            return
-        empresa_id, razao, fantasia, cnpj = item["values"]
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT nm_razao, nm_fantasia, nr_cnpj, nr_ie, nr_im, cd_cep, nr_numero,
-                nm_complemento, nr_jucesp_cad, dt_jucesp_cad, nr_jucesp_alt, dt_jucesp_alt
-            FROM empresas WHERE id_empresa = ?
-        """, (empresa_id,))
-        resultado = cursor.fetchone()
-        conn.close()
+        try:
+            item = self.tree.item(self.tree.focus())
+            if not item or not item.get("values"):
+                return
 
-        if resultado:
-            (razao, fantasia, cnpj, ie, im, cep, numero,
-            complemento, jucesp_cad, dt_cad, jucesp_alt, dt_alt) = resultado
-                
-            self.entry_razao.delete(0, tk.END)
-            self.entry_razao.insert(0, razao or "")
-                
-            self.entry_fantasia.delete(0, tk.END)
-            self.entry_fantasia.insert(0, fantasia or "")
-                
-            self.entry_cnpj.delete(0, tk.END)
-            self.entry_cnpj.insert(0, cnpj or "")
-                
-            self.entry_ie.delete(0, tk.END)
-            self.entry_ie.insert(0, ie or "")
-                
-            self.entry_im.delete(0, tk.END)
-            self.entry_im.insert(0, im or "")
-                
-            self.entry_cep.delete(0, tk.END)
-            self.entry_cep.insert(0, cep or "")
-                
-            self.entry_numero.delete(0, tk.END)
-            self.entry_numero.insert(0, numero or "")
-                
-            self.entry_complemento.delete(0, tk.END)
-            self.entry_complemento.insert(0, complemento or "")
-                
-            self.entry_jucesp_cad.delete(0, tk.END)
-            self.entry_jucesp_cad.insert(0, jucesp_cad or "")
-                
-            self.entry_dt_cad.delete(0, tk.END)
-            self.entry_dt_cad.insert(0, dt_cad or "")
-                
-            self.entry_jucesp_alt.delete(0, tk.END)
-            self.entry_jucesp_alt.insert(0, jucesp_alt or "")
-                
-            self.entry_dt_alt.delete(0, tk.END)
-            self.entry_dt_alt.insert(0, dt_alt or "")
+            empresa_id = item["values"][0]
+            self.current_id = empresa_id  # Store ID for editing
+            
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT nm_razao, nm_fantasia, nr_cnpj, nr_ie, nr_im, cd_cep, nr_numero,
+                    nm_complemento, nr_jucesp_cad, dt_jucesp_cad, nr_jucesp_alt, dt_jucesp_alt
+                FROM empresas WHERE id_empresa = ?
+            """, (empresa_id,))
+            resultado = cursor.fetchone()
+            conn.close()
 
+            if resultado:
+                (razao, fantasia, cnpj, ie, im, cep, numero,
+                complemento, jucesp_cad, dt_cad, jucesp_alt, dt_alt) = resultado
+                    
+                self.entry_razao.delete(0, tk.END)
+                self.entry_razao.insert(0, razao or "")
+                    
+                self.entry_fantasia.delete(0, tk.END)
+                self.entry_fantasia.insert(0, fantasia or "")
+                    
+                self.entry_cnpj.delete(0, tk.END)
+                self.entry_cnpj.insert(0, cnpj or "")
+                    
+                self.entry_ie.delete(0, tk.END)
+                self.entry_ie.insert(0, ie or "")
+                    
+                self.entry_im.delete(0, tk.END)
+                self.entry_im.insert(0, im or "")
+                    
+                self.entry_cep.delete(0, tk.END)
+                self.entry_cep.insert(0, cep or "")
+                    
+                self.entry_numero.delete(0, tk.END)
+                self.entry_numero.insert(0, numero or "")
+                    
+                self.entry_complemento.delete(0, tk.END)
+                self.entry_complemento.insert(0, complemento or "")
+                    
+                self.entry_jucesp_cad.delete(0, tk.END)
+                self.entry_jucesp_cad.insert(0, jucesp_cad or "")
+                    
+                self.entry_dt_cad.delete(0, tk.END)
+                self.entry_dt_cad.insert(0, dt_cad or "")
+                    
+                self.entry_jucesp_alt.delete(0, tk.END)
+                self.entry_jucesp_alt.insert(0, jucesp_alt or "")
+                    
+                self.entry_dt_alt.delete(0, tk.END)
+                self.entry_dt_alt.insert(0, dt_alt or "")
+        except Exception as e:
+            self.show_message(f"Erro ao selecionar empresa: {str(e)}", "error")
     def limpar_campos(self):
         """Limpa todos os campos do formulário"""
         self.entry_razao.delete(0, tk.END)

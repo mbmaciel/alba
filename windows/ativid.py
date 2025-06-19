@@ -113,12 +113,27 @@ class AtividWindow(BaseWindow):
             return
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO ativid (nm_atividade) VALUES (?)", (desc,))
+
+        # Verifica se já existe uma atividade com a mesma descrição
+        cursor.execute("SELECT id_atividade FROM ativid WHERE nm_atividade = ?", (desc,))
+        row = cursor.fetchone()
+
+        if row:
+            # Se já existe, faz UPDATE
+            id_atividade = row[0]
+            cursor.execute("UPDATE ativid SET nm_atividade = ? WHERE id_atividade = ?", (desc, id_atividade))
+            self.show_message("Atividade atualizada com sucesso!", "success")
+        else:
+            # Se não existe, faz INSERT com recnum
+            cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM ativid")
+            next_recnum = cursor.fetchone()[0]
+            cursor.execute("INSERT INTO ativid (recnum, nm_atividade) VALUES (?, ?)", (next_recnum, desc))
+            self.show_message("Atividade salva com sucesso!", "success")
+
         conn.commit()
         conn.close()
         self.limpar()
         self.carregar()
-        messagebox.showinfo("Sucesso", "Atividade salva com sucesso!")
 
     def remover(self):
         item = self.tree.focus()
@@ -127,11 +142,12 @@ class AtividWindow(BaseWindow):
             return
 
         id_atividade = self.tree.item(item)["values"][0]
-        
-        resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover esta atividade?")
-        if not resposta:
-            return
-            
+
+        # Substituir messagebox por show_message para confirmação
+        self.show_message("Clique novamente em Remover para confirmar a exclusão.", "warning")
+        self.btn_remover.config(command=lambda: self.remover_confirmado(id_atividade))
+
+    def remover_confirmado(self, id_atividade):
         conn = self.conectar()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM ativid WHERE id_atividade = ?", (id_atividade,))
@@ -139,7 +155,8 @@ class AtividWindow(BaseWindow):
         conn.close()
         self.carregar()
         self.limpar()
-        messagebox.showinfo("Sucesso", "Atividade removida com sucesso!")
+        self.show_message("Atividade removida com sucesso!", "success")
+        self.btn_remover.config(command=self.remover)
 
     def carregar(self):
         try:

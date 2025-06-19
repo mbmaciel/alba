@@ -8,6 +8,7 @@ import sqlite3
 class ComissaoWindow(BaseWindow):
     def __init__(self, master=None):
         super().__init__(master)
+        self.current_id = None  # Para controlar inserção/atualização
         aplicar_estilo(self)
         self.set_title("Cadastro de Faixas de Comissão")
         self.config(width=800, height=550)
@@ -114,85 +115,110 @@ class ComissaoWindow(BaseWindow):
 
         self.carregar()
 
-
     def novo(self):
         """Limpa os campos para inclusão de novo registro"""
+        self.current_id = None
         self.limpar()
         self.entry_ini.focus()
-        self.show_message("Campos limpos. Digite os dados da nova faixa de comissão.", "info")
+        self.show_message("Novo registro. Preencha os campos e salve.", "info")
 
     def salvar(self):
         try:
-            ini = float(self.entry_ini.get())
-            fim = float(self.entry_fim.get())
-            comissao = float(self.entry_comissao.get())
-        except ValueError:
-            self.show_message("ERRO: Insira valores numéricos válidos.", "error")
-            return
+            try:
+                ini = float(self.entry_ini.get())
+                fim = float(self.entry_fim.get())
+                comissao = float(self.entry_comissao.get())
+            except ValueError:
+                self.show_message("Insira valores numéricos válidos.", "error")
+                return
 
-        if ini < 0 or fim < 0 or comissao < 0:
-            self.show_message("ATENÇÃO: Os valores devem ser positivos.", "warning")
-            return
+            if ini < 0 or fim < 0 or comissao < 0:
+                self.show_message("Os valores devem ser positivos.", "warning")
+                return
 
-        if ini > fim:
-            self.show_message("ATENÇÃO: O desconto inicial deve ser menor ou igual ao desconto final.", "warning")
-            return
+            if ini > fim:
+                self.show_message("O desconto inicial deve ser menor ou igual ao desconto final.", "warning")
+                return
 
-        try:
             conn = self.conectar()
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO comissao (pc_desc_ini, pc_desc_fim, pc_comissao)
-                VALUES (?, ?, ?)
-            """, (ini, fim, comissao))
-            conn.commit()
-            conn.close()
-            self.limpar()
-            self.carregar()
-            self.show_message(f"Faixa de comissão {ini}% - {fim}% salva com sucesso!", "success")
-        except sqlite3.Error as e:
-            self.show_message(f"ERRO ao salvar faixa de comissão: {str(e)}", "error")
+
+            try:
+                if self.current_id is None:
+                    # Novo registro - INSERT
+                    cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM comissao")
+                    next_recnum = cursor.fetchone()[0]
+                    
+                    cursor.execute("""
+                        INSERT INTO comissao (recnum, pc_desc_ini, pc_desc_fim, pc_comissao)
+                        VALUES (?, ?, ?, ?)
+                    """, (next_recnum, ini, fim, comissao))
+                    self.show_message(f"Faixa de comissão {ini}% - {fim}% incluída com sucesso!", "success")
+                else:
+                    # Atualização - UPDATE
+                    cursor.execute("""
+                        UPDATE comissao SET pc_desc_ini=?, pc_desc_fim=?, pc_comissao=?
+                        WHERE id_comissao=?
+                    """, (ini, fim, comissao, self.current_id))
+                    self.show_message(f"Faixa de comissão {ini}% - {fim}% atualizada com sucesso!", "success")
+
+                conn.commit()
+                self.limpar()
+                self.carregar()
+
+            except sqlite3.Error as e:
+                self.show_message(f"Erro ao salvar: {str(e)}", "error")
+                conn.rollback()
+            finally:
+                conn.close()
+
+        except Exception as e:
+            self.show_message(f"Erro inesperado: {str(e)}", "error")
 
     def remover(self):
-        item = self.tree.focus()
-        if not item:
-            self.show_message("ATENÇÃO: Selecione uma faixa de comissão para remover.", "warning")
-            return
-        
-        item_values = self.tree.item(item)["values"]
-        id_comissao = item_values[0]
-        desc_ini = item_values[1]
-        desc_fim = item_values[2]
-        
-        # Confirmar remoção através da área de mensagens
-        self.show_message(f"Pressione novamente 'Remover' para confirmar exclusão da faixa {desc_ini}% - {desc_fim}%", "warning")
-        
-        # Alterar temporariamente o comando do botão para confirmação
-        def confirmar_remocao():
-            try:
-                conn = self.conectar()
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM comissao WHERE id_comissao = ?", (id_comissao,))
-                conn.commit()
-                conn.close()
-                self.carregar()
-                self.limpar()
-                self.show_message(f"Faixa de comissão {desc_ini}% - {desc_fim}% removida com sucesso!", "success")
-            except sqlite3.Error as e:
-                self.show_message(f"ERRO ao remover faixa de comissão: {str(e)}", "error")
-            finally:
-                # Restaurar comando original do botão
-                self.btn_remover.config(command=self.remover)
-        
-        # Alterar comando do botão temporariamente
-        self.btn_remover.config(command=confirmar_remocao)
-        
-        # Restaurar comando original após 10 segundos
-        self.after(10000, lambda: self.btn_remover.config(command=self.remover))
+        try:
+            item = self.tree.focus()
+            if not item:
+                self.show_message("Selecione uma faixa de comissão para remover.", "warning")
+                return
+            
+            item_values = self.tree.item(item)["values"]
+            id_comissao = item_values[0]
+            desc_ini = item_values[1]
+            desc_fim = item_values[2]
+            
+            # Confirmar remoção através da área de mensagens
+            self.show_message(f"Pressione novamente 'Remover' para confirmar exclusão da faixa {desc_ini}% - {desc_fim}%", "warning")
+            
+            # Alterar temporariamente o comando do botão para confirmação
+            def confirmar_remocao():
+                try:
+                    conn = self.conectar()
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM comissao WHERE id_comissao = ?", (id_comissao,))
+                    conn.commit()
+                    conn.close()
+                    self.carregar()
+                    self.limpar()
+                    self.show_message(f"Faixa de comissão {desc_ini}% - {desc_fim}% removida com sucesso!", "success")
+                except sqlite3.Error as e:
+                    self.show_message(f"Erro ao remover: {str(e)}", "error")
+                finally:
+                    # Restaurar comando original do botão
+                    self.btn_remover.config(command=self.remover)
+            
+            # Alterar comando do botão temporariamente
+            self.btn_remover.config(command=confirmar_remocao)
+            
+            # Restaurar comando original após 10 segundos
+            self.after(10000, lambda: self.btn_remover.config(command=self.remover))
+
+        except Exception as e:
+            self.show_message(f"Erro inesperado: {str(e)}", "error")
 
     def carregar(self):
-        self.tree.delete(*self.tree.get_children())
         try:
+            self.tree.delete(*self.tree.get_children())
             conn = self.conectar()
             cursor = conn.cursor()
             cursor.execute("SELECT id_comissao, pc_desc_ini, pc_desc_fim, pc_comissao FROM comissao ORDER BY pc_desc_ini")
@@ -202,26 +228,104 @@ class ComissaoWindow(BaseWindow):
             conn.close()
             self.show_message(f"Carregadas {len(resultados)} faixas de comissão", "success")
         except sqlite3.Error as e:
-            self.show_message(f"ERRO ao carregar faixas de comissão: {str(e)}", "error")
+            self.show_message(f"Erro ao carregar dados: {str(e)}", "error")
 
     def on_select(self, event):
-        item = self.tree.item(self.tree.focus())
-        if not item:
-            return
-        values = item["values"]
-        if len(values) >= 4:
-            _, ini, fim, comissao = values
-            self.entry_ini.delete(0, tk.END)
-            self.entry_ini.insert(0, str(ini))
-            self.entry_fim.delete(0, tk.END)
-            self.entry_fim.insert(0, str(fim))
-            self.entry_comissao.delete(0, tk.END)
-            self.entry_comissao.insert(0, str(comissao))
-            self.show_message(f"Faixa selecionada: {ini}% - {fim}%", "info")
+        try:
+            item = self.tree.item(self.tree.focus())
+            if not item or not item.get("values"):
+                return
+            
+            values = item["values"]
+            if len(values) >= 4:
+                id_comissao, ini, fim, comissao = values
+                self.current_id = id_comissao  # Armazenar ID para edição
+                
+                self.entry_ini.delete(0, tk.END)
+                self.entry_ini.insert(0, str(ini))
+                self.entry_fim.delete(0, tk.END)
+                self.entry_fim.insert(0, str(fim))
+                self.entry_comissao.delete(0, tk.END)
+                self.entry_comissao.insert(0, str(comissao))
+                self.show_message(f"Faixa selecionada para edição: {ini}% - {fim}%", "info")
+        except Exception as e:
+            self.show_message(f"Erro ao selecionar: {str(e)}", "error")
 
     def limpar(self):
         """Limpa todos os campos do formulário"""
+        self.current_id = None
         self.entry_ini.delete(0, tk.END)
         self.entry_fim.delete(0, tk.END)
         self.entry_comissao.delete(0, tk.END)
-        
+
+    def show_message(self, message, msg_type="info"):
+        """Exibe mensagem na interface"""
+        colors = {
+            "success": "green",
+            "error": "red",
+            "warning": "orange",
+            "info": "blue"
+        }
+        self.message_label.config(text=message, foreground=colors.get(msg_type, "black"))
+        # Auto-limpar mensagem após 5 segundos
+        self.after(5000, lambda: self.message_label.config(text="Sistema pronto para uso", foreground="blue"))
+
+    # Métodos de navegação
+    def ir_primeiro(self):
+        try:
+            items = self.tree.get_children()
+            if items:
+                first_item = items[0]
+                self.tree.selection_set(first_item)
+                self.tree.focus(first_item)
+                self.tree.see(first_item)
+                self.on_select(None)
+        except Exception as e:
+            self.show_message(f"Erro ao navegar: {str(e)}", "error")
+
+    def ir_anterior(self):
+        try:
+            selection = self.tree.selection()
+            if not selection:
+                self.ir_primeiro()
+                return
+
+            current_index = self.tree.index(selection[0])
+            if current_index > 0:
+                prev_item = self.tree.get_children()[current_index - 1]
+                self.tree.selection_set(prev_item)
+                self.tree.focus(prev_item)
+                self.tree.see(prev_item)
+                self.on_select(None)
+        except Exception as e:
+            self.show_message(f"Erro ao navegar: {str(e)}", "error")
+
+    def ir_proximo(self):
+        try:
+            selection = self.tree.selection()
+            if not selection:
+                self.ir_primeiro()
+                return
+
+            current_index = self.tree.index(selection[0])
+            items = self.tree.get_children()
+            if current_index < len(items) - 1:
+                next_item = items[current_index + 1]
+                self.tree.selection_set(next_item)
+                self.tree.focus(next_item)
+                self.tree.see(next_item)
+                self.on_select(None)
+        except Exception as e:
+            self.show_message(f"Erro ao navegar: {str(e)}", "error")
+
+    def ir_ultimo(self):
+        try:
+            items = self.tree.get_children()
+            if items:
+                last_item = items[-1]
+                self.tree.selection_set(last_item)
+                self.tree.focus(last_item)
+                self.tree.see(last_item)
+                self.on_select(None)
+        except Exception as e:
+            self.show_message(f"Erro inesperado: {str(e)}", "error")

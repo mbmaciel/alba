@@ -37,6 +37,15 @@ class TipoWindow(BaseWindow):
         separator = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
         separator.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
 
+        # Área de mensagens ao lado dos comandos
+        self.message_label = ttkb.Label(
+            toolbar_frame, 
+            text="", 
+            font=("Arial", 9),
+            padding=(10, 0)
+        )
+        self.message_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
         input_frame.pack(fill=tk.X, pady=(0, 15))
@@ -74,53 +83,101 @@ class TipoWindow(BaseWindow):
 
         self.carregar()
 
+    def show_message(self, message, msg_type="info"):
+        """Exibe mensagem na área de mensagens com cores baseadas no tipo"""
+        colors = {
+            "info": "blue",
+            "success": "green", 
+            "warning": "orange",
+            "error": "red",
+            "danger": "red"
+        }
+        
+        self.message_label.config(
+            text=message,
+            foreground=colors.get(msg_type, "blue")
+        )
+
     def novo(self):
         """Limpa os campos para inclusão de novo registro"""
         self.limpar()
         self.entry_id.focus()
+        self.show_message("Pronto para novo registro", "info")
 
     def salvar(self):
         id_tipo = self.entry_id.get()
         nome = self.entry_nome.get()
 
         if not id_tipo or not nome:
-            messagebox.showwarning("Aviso", "Preencha todos os campos.")
+            self.show_message("Preencha todos os campos", "warning")
             return
 
         try:
             id_tipo = int(id_tipo)
         except ValueError:
-            messagebox.showwarning("Erro", "ID deve ser um número.")
+            self.show_message("ID deve ser um número", "error")
             return
 
         conn = self.conectar()
         cursor = conn.cursor()
 
-        # Verifica se já existe
-        cursor.execute("SELECT COUNT(*) FROM tipo WHERE id_tipo = ?", (id_tipo,))
-        existe = cursor.fetchone()[0]
+        try:
+            # Verifica se já existe
+            cursor.execute("SELECT COUNT(*) FROM tipo WHERE id_tipo = ?", (id_tipo,))
+            existe = cursor.fetchone()[0]
 
-        if existe:
-            cursor.execute("UPDATE tipo SET nm_tipo = ? WHERE id_tipo = ?", (nome, id_tipo))
-        else:
-            cursor.execute("INSERT INTO tipo (id_tipo, nm_tipo) VALUES (?, ?)", (id_tipo, nome))
+            if existe:
+                cursor.execute("UPDATE tipo SET nm_tipo = ? WHERE id_tipo = ?", (nome, id_tipo))
+                self.show_message("Registro atualizado com sucesso!", "success")
+            else:
+                # Para INSERT, precisamos obter o próximo recnum
+                cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM tipo")
+                proximo_recnum = cursor.fetchone()[0]
+                
+                cursor.execute("INSERT INTO tipo (recnum, id_tipo, nm_tipo) VALUES (?, ?, ?)", 
+                             (proximo_recnum, id_tipo, nome))
+                self.show_message("Registro inserido com sucesso!", "success")
 
-        conn.commit()
-        conn.close()
-        self.limpar()
-        self.carregar()
+            conn.commit()
+            self.limpar()
+            self.carregar()
+            
+        except sqlite3.IntegrityError as e:
+            self.show_message(f"Erro de integridade: {str(e)}", "error")
+        except Exception as e:
+            self.show_message(f"Erro ao salvar: {str(e)}", "error")
+        finally:
+            conn.close()
 
     def remover(self):
         item = self.tree.focus()
         if not item:
+            self.show_message("Selecione um registro para remover", "warning")
             return
-        id_tipo = self.tree.item(item)["values"][0]
+            
+        values = self.tree.item(item)["values"]
+        id_tipo = values[0]
+        nome_tipo = values[1]
+        
+        # Usar messagebox apenas para confirmação (diálogo interativo)
+        resposta = messagebox.askyesno("Confirmar", f"Deseja realmente remover o tipo '{nome_tipo}'?")
+        if not resposta:
+            self.show_message("Operação cancelada", "info")
+            return
+
         conn = self.conectar()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM tipo WHERE id_tipo = ?", (id_tipo,))
-        conn.commit()
-        conn.close()
-        self.carregar()
+        
+        try:
+            cursor.execute("DELETE FROM tipo WHERE id_tipo = ?", (id_tipo,))
+            conn.commit()
+            self.show_message("Registro removido com sucesso!", "success")
+            self.carregar()
+            self.limpar()
+        except Exception as e:
+            self.show_message(f"Erro ao remover: {str(e)}", "error")
+        finally:
+            conn.close()
 
     def carregar(self):
         self.tree.delete(*self.tree.get_children())
@@ -130,17 +187,20 @@ class TipoWindow(BaseWindow):
         for row in cursor.fetchall():
             self.tree.insert("", "end", values=row)
         conn.close()
+        self.show_message("Dados carregados", "info")
 
     def on_select(self, event):
         item = self.tree.item(self.tree.focus())
-        if not item:
+        if not item or not item["values"]:
             return
         id_tipo, nome = item["values"]
         self.entry_id.delete(0, tk.END)
         self.entry_id.insert(0, id_tipo)
         self.entry_nome.delete(0, tk.END)
         self.entry_nome.insert(0, nome)
+        self.show_message(f"Registro selecionado: {nome}", "info")
 
     def limpar(self):
         self.entry_id.delete(0, tk.END)
         self.entry_nome.delete(0, tk.END)
+        self.show_message("Campos limpos", "info")

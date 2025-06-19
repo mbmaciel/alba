@@ -188,43 +188,64 @@ class OrdemCompraWindow(BaseWindow):
             return data_bd
         
     def salvar(self):
-        nome_empresa = self.combo_empresa.get()
-        id_empresa = next((id for id, nome in self.empresas if nome == nome_empresa), None)
+        try:
+            # Validações básicas
+            if not self.combo_empresa.get():
+                messagebox.showerror("Erro", "Selecione uma empresa")
+                return
+            if not self.combo_cliente.get():
+                messagebox.showerror("Erro", "Selecione um cliente")
+                return
 
-        nome_cliente = self.combo_cliente.get()
-        id_cliente = next((id for id, nome in self.clientes if nome == nome_cliente), None)
+            nome_empresa = self.combo_empresa.get()
+            id_empresa = next((id for id, nome in self.empresas if nome == nome_empresa), None)
 
-        nome_contato = self.combo_contato.get()
-        id_contato = next((id for id, nome in self.contatos if nome == nome_contato), None)
+            nome_cliente = self.combo_cliente.get()
+            id_cliente = next((id for id, nome in self.clientes if nome == nome_cliente), None)
 
-        # Converter data para formato do banco
-        data_bd = self.converter_data_para_bd(self.entry_data.get())
+            nome_contato = self.combo_contato.get()
+            id_contato = next((id for id, nome in self.contatos if nome == nome_contato), None)
 
-        data = (
-            id_empresa,
-            id_cliente,
-            data_bd,
-            id_contato,
-            self.entry_pedido.get(),
-            self.entry_prazo.get(),
-            self.entry_condicoes.get(),
-            self.entry_obs.get(),
-            self.entry_total.get(),
-            self.combo_status.get()
-        )
+            # Converter data para formato do banco
+            data_bd = self.converter_data_para_bd(self.entry_data.get())
 
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO alba0010 (
-                id_empresa, id_cliente, dt_oc, id_contato, nr_pedido_cli,
-                tx_prazo, tx_condicoes, tx_obs, vl_total, fl_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, data)
-        conn.commit()
-        conn.close()
-        self.limpar()
-        self.carregar()
+            # Obter próximo recnum
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM alba0010")
+            recnum = cursor.fetchone()[0]
+
+            data = (
+                recnum,
+                id_empresa,
+                id_cliente,
+                data_bd,
+                id_contato,
+                self.entry_pedido.get(),
+                self.entry_prazo.get(),
+                self.entry_condicoes.get(),
+                self.entry_obs.get(),
+                self.entry_total.get(),
+                self.combo_status.get()
+            )
+
+            cursor.execute("""
+                INSERT INTO alba0010 (
+                    recnum, id_empresa, id_cliente, dt_oc, id_contato, nr_pedido_cli,
+                    tx_prazo, tx_condicoes, tx_obs, vl_total, fl_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, data)
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo("Sucesso", "Ordem de compra salva com sucesso!")
+            self.limpar()
+            self.carregar()
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao salvar ordem de compra: {str(e)}")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro inesperado: {str(e)}")
 
     def remover(self):
         item = self.tree.focus()

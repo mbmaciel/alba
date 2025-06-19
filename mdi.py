@@ -22,16 +22,18 @@ class MDIChild(ttkb.Frame):
         super().__init__(master, relief="raised", borderwidth=2, **kwargs)
 
         # Title bar with close button
-        self.title_bar = ttkb.Frame(self, style="inverse.TFrame")
+        self.title_bar = ttkb.Frame(self, style="primary.TFrame")
         self.title_bar.pack(fill=tk.X)
 
         self.title_label = ttkb.Label(
-            self.title_bar, text=title, anchor="w", padding=2, style="inverse.TLabel"
+            self.title_bar, text=title, anchor="w", padding=2,
+            style="primary.Inverse.TLabel", foreground="white"
         )
         self.title_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         self.close_button = ttkb.Button(
-            self.title_bar, text="✖", width=3, command=self.destroy
+            self.title_bar, text="✖", width=3, command=self.destroy,
+            style="danger.TButton"
         )
         self.close_button.pack(side=tk.RIGHT)
 
