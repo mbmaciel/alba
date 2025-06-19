@@ -1,7 +1,6 @@
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
-from tkinter import messagebox
 from estilo import aplicar_estilo
 from windows.base_window import BaseWindow
 import sqlite3
@@ -24,9 +23,13 @@ class ItensProducaoWindow(BaseWindow):
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Barra de ferramentas no topo
-        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
-        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+        # Frame para barra de ferramentas e mensagens
+        top_frame = ttkb.Frame(main_frame)
+        top_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Barra de ferramentas no topo (lado esquerdo)
+        toolbar_frame = ttkb.Frame(top_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         # Container para os botões grudados
         button_container = ttkb.Frame(toolbar_frame)
@@ -58,6 +61,21 @@ class ItensProducaoWindow(BaseWindow):
         # Label para mostrar a posição atual
         self.lbl_posicao = ttkb.Label(nav_container, text="0/0")
         self.lbl_posicao.pack(side=tk.LEFT, padx=10)
+
+        # Área de mensagens (lado direito)
+        message_frame = ttkb.Frame(top_frame, relief="sunken", borderwidth=2, padding=5)
+        message_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+
+        ttkb.Label(message_frame, text="Mensagens:", font=("Arial", 8, "bold")).pack(anchor=tk.W)
+        
+        self.message_label = ttkb.Label(
+            message_frame, 
+            text="Sistema pronto para uso", 
+            font=("Arial", 9),
+            foreground="blue",
+            wraplength=300
+        )
+        self.message_label.pack(anchor=tk.W, fill=tk.BOTH, expand=True)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -140,6 +158,18 @@ class ItensProducaoWindow(BaseWindow):
         self.carregar_of()
         self.carregar()
 
+    def show_message(self, message, msg_type="info"):
+        """Exibe mensagem na interface"""
+        colors = {
+            "success": "green",
+            "error": "red",
+            "warning": "orange",
+            "info": "blue"
+        }
+        self.message_label.config(text=message, foreground=colors.get(msg_type, "black"))
+        # Auto-limpar mensagem após 5 segundos
+        self.after(5000, lambda: self.message_label.config(text="Sistema pronto para uso", foreground="blue"))
+
     def carregar_produtos(self):
         conn = self.conectar()
         cursor = conn.cursor()
@@ -165,15 +195,38 @@ class ItensProducaoWindow(BaseWindow):
         conn.close()
         self.combo_of["values"] = [str(row[0]) for row in self.ordens]
 
+    def safe_float_convert(self, value, default=0.0):
+        """Converte string para float de forma segura"""
+        if not value or value.strip() == "":
+            return default
+        try:
+            # Remove espaços e substitui vírgula por ponto se necessário
+            clean_value = str(value).strip().replace(',', '.')
+            return float(clean_value)
+        except (ValueError, TypeError):
+            return default
+
+    def safe_int_convert(self, value, default=0):
+        """Converte string para int de forma segura"""
+        if not value or value.strip() == "":
+            return default
+        try:
+            # Remove espaços e parte decimal se houver
+            clean_value = str(value).strip().replace(',', '.')
+            return int(float(clean_value))
+        except (ValueError, TypeError):
+            return default
+
     def calcular_total(self, event=None):
         try:
-            qtd = float(self.entry_qtd.get() or 0)
-            unit = float(self.entry_unit.get() or 0)
-            desc = float(self.entry_desc.get() or 0)
+            qtd = self.safe_float_convert(self.entry_qtd.get())
+            unit = self.safe_float_convert(self.entry_unit.get())
+            desc = self.safe_float_convert(self.entry_desc.get())
             total = qtd * unit * (1 - desc / 100)
             self.entry_total.delete(0, tk.END)
             self.entry_total.insert(0, f"{total:.2f}")
-        except ValueError:
+        except Exception as e:
+            # Em caso de erro, apenas não atualiza o total
             pass
 
     def item_selecionado_evento(self, event):
@@ -240,104 +293,188 @@ class ItensProducaoWindow(BaseWindow):
         # Limpar formulário para novo registro
         self.item_selecionado = None
         self.limpar()
+        self.show_message("Novo registro. Preencha os campos e salve.", "info")
 
     def salvar(self):
         try:
-            id_of = int(self.combo_of.get())
+            # Validações básicas
+            if not self.combo_of.get():
+                self.show_message("Selecione uma Ordem de Fabricação.", "warning")
+                return
+                
+            if not self.combo_produto.get():
+                self.show_message("Selecione um produto.", "warning")
+                return
+                
+            if not self.combo_cliente.get():
+                self.show_message("Selecione um cliente.", "warning")
+                return
+                
+            if not self.entry_qtd.get():
+                self.show_message("Informe a quantidade.", "warning")
+                return
+                
+            if not self.entry_unit.get():
+                self.show_message("Informe o valor unitário.", "warning")
+                return
+
+            # Conversões seguras
+            try:
+                id_of = self.safe_int_convert(self.combo_of.get())
+                if id_of == 0:
+                    self.show_message("Ordem de Fabricação inválida.", "error")
+                    return
+            except:
+                self.show_message("Ordem de Fabricação deve ser um número válido.", "error")
+                return
+
             nome_produto = self.combo_produto.get()
             id_produto = next((id for id, nome in self.produtos if nome == nome_produto), None)
+            if not id_produto:
+                self.show_message("Produto não encontrado.", "error")
+                return
 
             nome_cliente = self.combo_cliente.get()
             cd_cliente = next((cd for cd, nome in self.clientes if nome == nome_cliente), None)
+            if not cd_cliente:
+                self.show_message("Cliente não encontrado.", "error")
+                return
 
-            qtd = int(self.entry_qtd.get())
-            unit = float(self.entry_unit.get())
-            desc = float(self.entry_desc.get())
+            qtd = self.safe_int_convert(self.entry_qtd.get())
+            if qtd <= 0:
+                self.show_message("Quantidade deve ser maior que zero.", "error")
+                return
+
+            unit = self.safe_float_convert(self.entry_unit.get())
+            if unit <= 0:
+                self.show_message("Valor unitário deve ser maior que zero.", "error")
+                return
+
+            desc = self.safe_float_convert(self.entry_desc.get())
+            if desc < 0 or desc > 100:
+                self.show_message("Desconto deve estar entre 0 e 100%.", "error")
+                return
+
             total = qtd * unit * (1 - desc / 100)
 
             conn = self.conectar()
             cursor = conn.cursor()
             
-            if self.item_selecionado:
-                # Atualizar registro existente
-                cursor.execute("""
-                    UPDATE alba0009 SET
-                        id_of = ?, id_produto = ?, cd_cliente = ?, qt_produto = ?, 
-                        vl_unitario = ?, pc_desc_coml = ?, pc_desc_fiscal = 0, 
-                        vl_unit_final = ?, vl_produto = ?, vl_total = ?
-                    WHERE recnum = ?
-                """, (
-                    id_of, id_produto, cd_cliente, qtd, unit,
-                    desc, unit, total, total, self.item_selecionado
-                ))
-                messagebox.showinfo("Sucesso", "Item atualizado com sucesso!")
-            else:
-                # Inserir novo registro
-                cursor.execute("""
-                    INSERT INTO alba0009 (
-                        id_of, id_produto, cd_cliente, qt_produto, vl_unitario,
-                        pc_desc_coml, pc_desc_fiscal, vl_unit_final, vl_produto,
-                        vl_total, fl_status, fl_comissao
-                    ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'ATIVO', 'S')
-                """, (
-                    id_of, id_produto, cd_cliente, qtd, unit,
-                    desc, unit, total, total
-                ))
-                messagebox.showinfo("Sucesso", "Item salvo com sucesso!")
+            try:
+                if self.item_selecionado:
+                    # Atualizar registro existente
+                    cursor.execute("""
+                        UPDATE alba0009 SET
+                            id_of = ?, id_produto = ?, cd_cliente = ?, qt_produto = ?, 
+                            vl_unitario = ?, pc_desc_coml = ?, pc_desc_fiscal = 0, 
+                            vl_unit_final = ?, vl_produto = ?, vl_total = ?
+                        WHERE recnum = ?
+                    """, (
+                        id_of, id_produto, cd_cliente, qtd, unit,
+                        desc, unit, total, total, self.item_selecionado
+                    ))
+                    self.show_message("Item atualizado com sucesso!", "success")
+                else:
+                    # Inserir novo registro
+                    cursor.execute("""
+                        INSERT INTO alba0009 (
+                            id_of, id_produto, cd_cliente, qt_produto, vl_unitario,
+                            pc_desc_coml, pc_desc_fiscal, vl_unit_final, vl_produto,
+                            vl_total, fl_status, fl_comissao
+                        ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'ATIVO', 'S')
+                    """, (
+                        id_of, id_produto, cd_cliente, qtd, unit,
+                        desc, unit, total, total
+                    ))
+                    self.show_message("Item salvo com sucesso!", "success")
+                    
+                conn.commit()
+                self.limpar()
+                self.carregar()
                 
-            conn.commit()
-            conn.close()
-            self.limpar()
-            self.carregar()
-            
+            except sqlite3.Error as e:
+                self.show_message(f"Erro ao salvar no banco: {str(e)}", "error")
+                conn.rollback()
+            finally:
+                conn.close()
+                
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao salvar: {str(e)}")
+            self.show_message(f"Erro ao salvar: {str(e)}", "error")
 
     def remover(self):
         if not self.item_selecionado:
-            messagebox.showwarning("Aviso", "Selecione um item para remover")
+            self.show_message("Selecione um item para remover.", "warning")
             return
             
-        if messagebox.askyesno("Confirmar", "Deseja realmente excluir este item?"):
-            conn = self.conectar()
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM alba0009 WHERE recnum = ?", (self.item_selecionado,))
-            conn.commit()
-            conn.close()
-            messagebox.showinfo("Sucesso", "Item removido com sucesso!")
-            self.limpar()
-            self.carregar()
+        # Obter nome do produto para confirmação
+        item = self.tree.focus()
+        if item:
+            valores = self.tree.item(item)["values"]
+            produto_nome = valores[2] if len(valores) > 2 else "item"
+            
+            # Confirmar remoção através da área de mensagens
+            self.show_message(f"Pressione novamente 'Remover' para confirmar exclusão de '{produto_nome}'", "warning")
+            
+            # Alterar temporariamente o comando do botão para confirmação
+            def confirmar_remocao():
+                try:
+                    conn = self.conectar()
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM alba0009 WHERE recnum = ?", (self.item_selecionado,))
+                    conn.commit()
+                    conn.close()
+                    self.show_message("Item removido com sucesso!", "success")
+                    self.limpar()
+                    self.carregar()
+                except sqlite3.Error as e:
+                    self.show_message(f"Erro ao remover: {str(e)}", "error")
+                finally:
+                    # Restaurar comando original do botão
+                    self.btn_remover.config(command=self.remover)
+            
+            # Alterar comando do botão temporariamente
+            self.btn_remover.config(command=confirmar_remocao)
+            
+            # Restaurar comando original após 10 segundos
+            self.after(10000, lambda: self.btn_remover.config(command=self.remover))
 
     def carregar(self):
-        self.tree.delete(*self.tree.get_children())
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT i.recnum, i.id_of,
-                   p.nm_produto, c.nm_razao,
-                   i.qt_produto, i.vl_unitario, i.vl_total
-            FROM alba0009 i
-            LEFT JOIN alba0005 p ON i.id_produto = p.id_produto
-            LEFT JOIN alba0001 c ON i.cd_cliente = c.nr_cnpj_cpf
-        """)
-        
-        # Armazenar os IDs para navegação
-        self.lista_ids = []
-        rows = cursor.fetchall()
-        
-        for row in rows:
-            self.lista_ids.append(row[0])  # Armazenar o ID (recnum)
-            self.tree.insert("", "end", values=row)
+        try:
+            self.tree.delete(*self.tree.get_children())
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT i.recnum, i.id_of,
+                       p.nm_produto, c.nm_razao,
+                       i.qt_produto, i.vl_unitario, i.vl_total
+                FROM alba0009 i
+                LEFT JOIN alba0005 p ON i.id_produto = p.id_produto
+                LEFT JOIN alba0001 c ON i.cd_cliente = c.nr_cnpj_cpf
+                ORDER BY i.recnum
+            """)
             
-        conn.close()
-        
-        # Atualizar o contador de posição
-        self.indice_atual = -1 if not self.lista_ids else 0
-        self.atualizar_posicao()
-        
-        # Se houver registros, selecionar o primeiro
-        if self.lista_ids and self.indice_atual == 0:
-            self.carregar_registro(self.lista_ids[0])
+            # Armazenar os IDs para navegação
+            self.lista_ids = []
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                self.lista_ids.append(row[0])  # Armazenar o ID (recnum)
+                self.tree.insert("", "end", values=row)
+                
+            conn.close()
+            
+            # Atualizar o contador de posição
+            self.indice_atual = -1 if not self.lista_ids else 0
+            self.atualizar_posicao()
+            
+            # Se houver registros, selecionar o primeiro
+            if self.lista_ids and self.indice_atual == 0:
+                self.carregar_registro(self.lista_ids[0])
+                
+            self.show_message(f"Carregados {len(rows)} itens de produção", "success")
+            
+        except Exception as e:
+            self.show_message(f"Erro ao carregar dados: {str(e)}", "error")
 
     def limpar(self):
         self.item_selecionado = None
@@ -352,6 +489,7 @@ class ItensProducaoWindow(BaseWindow):
     # Funções de navegação
     def primeiro(self):
         if not self.lista_ids:
+            self.show_message("Nenhum registro encontrado.", "warning")
             return
         self.indice_atual = 0
         self.carregar_registro(self.lista_ids[self.indice_atual])
@@ -359,6 +497,7 @@ class ItensProducaoWindow(BaseWindow):
     
     def anterior(self):
         if not self.lista_ids or self.indice_atual <= 0:
+            self.show_message("Já está no primeiro registro.", "info")
             return
         self.indice_atual -= 1
         self.carregar_registro(self.lista_ids[self.indice_atual])
@@ -366,6 +505,7 @@ class ItensProducaoWindow(BaseWindow):
     
     def proximo(self):
         if not self.lista_ids or self.indice_atual >= len(self.lista_ids) - 1:
+            self.show_message("Já está no último registro.", "info")
             return
         self.indice_atual += 1
         self.carregar_registro(self.lista_ids[self.indice_atual])
@@ -373,6 +513,7 @@ class ItensProducaoWindow(BaseWindow):
     
     def ultimo(self):
         if not self.lista_ids:
+            self.show_message("Nenhum registro encontrado.", "warning")
             return
         self.indice_atual = len(self.lista_ids) - 1
         self.carregar_registro(self.lista_ids[self.indice_atual])

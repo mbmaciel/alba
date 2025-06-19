@@ -12,6 +12,7 @@ class ItemOrdemCompraWindow(BaseWindow):
         aplicar_estilo(self)
         self.set_title("Itens da Ordem de Compra (alba0011)")
         self.config(width=1100, height=650)
+        self.item_selecionado_id = None
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)
@@ -47,6 +48,15 @@ class ItemOrdemCompraWindow(BaseWindow):
         ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Área de mensagens ao lado dos comandos
+        self.message_label = ttkb.Label(
+            toolbar_frame, 
+            text="", 
+            font=("Arial", 9),
+            padding=(10, 0)
+        )
+        self.message_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -121,13 +131,30 @@ class ItemOrdemCompraWindow(BaseWindow):
         
         self.tree.bind("<ButtonRelease-1>", self.on_select)
 
+
         self.carregar_produtos()
         self.carregar()
+
+    def show_message(self, message, msg_type="info"):
+        """Exibe mensagem na área de mensagens com cores baseadas no tipo"""
+        colors = {
+            "info": "blue",
+            "success": "green", 
+            "warning": "orange",
+            "error": "red",
+            "danger": "red"
+        }
+        
+        self.message_label.config(
+            text=message,
+            foreground=colors.get(msg_type, "blue")
+        )
 
     def novo(self):
         """Limpa os campos para inclusão de novo registro"""
         self.limpar()
         self.entry_id_oc.focus()
+        self.show_message("Pronto para novo item", "info")
 
     def carregar_produtos(self):
         conn = self.conectar()
@@ -175,18 +202,19 @@ class ItemOrdemCompraWindow(BaseWindow):
         unit = self.entry_unit.get()
         desc = self.entry_desc.get()
         obs = self.entry_obs.get()
+        id_item_atual = getattr(self, 'item_selecionado_id', None)
 
         # Validações
         if not id_oc:
-            messagebox.showwarning("Atenção", "ID da Ordem de Compra é obrigatório.")
+            self.show_message("ID da Ordem de Compra é obrigatório", "warning")
             return
-            
+
         if not produto_nome:
-            messagebox.showwarning("Atenção", "Selecione um produto.")
+            self.show_message("Selecione um produto", "warning")
             return
-            
+
         if not qtd or not unit:
-            messagebox.showwarning("Atenção", "Quantidade e Valor Unitário são obrigatórios.")
+            self.show_message("Quantidade e Valor Unitário são obrigatórios", "warning")
             return
 
         try:
@@ -194,12 +222,12 @@ class ItemOrdemCompraWindow(BaseWindow):
             unit = float(unit)
             desc = float(desc) if desc else 0
         except ValueError:
-            messagebox.showerror("Erro", "Valores numéricos inválidos.")
+            self.show_message("Valores numéricos inválidos", "error")
             return
 
         id_produto = next((id for id, nome in self.produtos if nome == produto_nome), None)
         if not id_produto:
-            messagebox.showerror("Erro", "Produto não encontrado.")
+            self.show_message("Produto não encontrado", "error")
             return
 
         total = self.calcular_total()
@@ -207,33 +235,181 @@ class ItemOrdemCompraWindow(BaseWindow):
         conn = self.conectar()
         cursor = conn.cursor()
         try:
-            cursor.execute("""
-                INSERT INTO alba0011 (
-                    id_oc, id_produto, cd_cliente, qt_produto, vl_unitario,
-                    pc_desc_coml, pc_desc_fiscal, vl_unit_final, vl_produto,
-                    pc_ipi, vl_ipi, pc_icms, vl_icms, pc_icmsst, vl_icmsst,
-                    vl_total, pc_comissao, vl_comissao, fl_status, tx_obs, fl_comissao
-                ) VALUES (?, ?, '', ?, ?, ?, 0, ?, ?, 0, 0, 0, 0, 0, 0, ?, 0, 0, 'ATIVO', ?, 'S')
-            """, (id_oc, id_produto, qtd, unit, desc, total, total, total, obs))
+            if id_item_atual:
+                # Atualização
+                cursor.execute("""
+                    UPDATE alba0011 SET
+                        id_oc = ?, id_produto = ?, qt_produto = ?, vl_unitario = ?,
+                        pc_desc_coml = ?, vl_unit_final = ?, vl_produto = ?, tx_obs = ?
+                    WHERE id_item = ?
+                """, (id_oc, id_produto, qtd, unit, desc, total, total, obs, id_item_atual))
+                self.show_message("Item atualizado com sucesso!", "success")
+            else:
+                # Inserção
+                cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM alba0011")
+                proximo_recnum = cursor.fetchone()[0]
+
+                cursor.execute("SELECT COALESCE(MAX(id_item), 0) + 1 FROM alba0011")
+                proximo_id_item = cursor.fetchone()[0]
+
+                cursor.execute("""
+                    INSERT INTO alba0011 (
+                        recnum, id_item, id_oc, id_produto, cd_cliente, qt_produto, vl_unitario,
+                        pc_desc_coml, pc_desc_fiscal, vl_unit_final, vl_produto,
+                        pc_ipi, vl_ipi, pc_icms, vl_icms, pc_icmsst, vl_icmsst,
+                        vl_total, pc_comissao, vl_comissao, fl_status, tx_obs, fl_comissao
+                    ) VALUES (?, ?, ?, ?, '', ?, ?, ?, 0, ?, ?, 0, 0, 0, 0, 0, 0, ?, 0, 0, 'ATIVO', ?, 'S')
+                """, (
+                    proximo_recnum, proximo_id_item, id_oc, id_produto, qtd, unit, desc,
+                    total, total, total, obs
+                ))
+                self.show_message("Item salvo com sucesso!", "success")
+
             conn.commit()
-            messagebox.showinfo("Sucesso", "Item salvo com sucesso!")
             self.limpar()
             self.carregar()
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao salvar item: {str(e)}")
+            self.show_message(f"Erro ao salvar item: {str(e)}", "error")
         finally:
             conn.close()
+
+            id_oc = self.entry_id_oc.get()
+            produto_nome = self.combo_produto.get()
+            qtd = self.entry_qtd.get()
+            unit = self.entry_unit.get()
+            desc = self.entry_desc.get()
+            obs = self.entry_obs.get()
+
+            if not id_oc:
+                self.show_message("ID da Ordem de Compra é obrigatório", "warning")
+                return
+
+            if not produto_nome:
+                self.show_message("Selecione um produto", "warning")
+                return
+
+            if not qtd or not unit:
+                self.show_message("Quantidade e Valor Unitário são obrigatórios", "warning")
+                return
+
+            try:
+                qtd = float(qtd)
+                unit = float(unit)
+                desc = float(desc) if desc else 0
+            except ValueError:
+                self.show_message("Valores numéricos inválidos", "error")
+                return
+
+            id_produto = next((id for id, nome in self.produtos if nome == produto_nome), None)
+            if not id_produto:
+                self.show_message("Produto não encontrado", "error")
+                return
+
+            total = self.calcular_total()
+
+            conn = self.conectar()
+            cursor = conn.cursor()
+            try:
+                # Obter próximo recnum
+                cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM alba0011")
+                proximo_recnum = cursor.fetchone()[0]
+
+                # Obter próximo id_item (chave primária)
+                cursor.execute("SELECT COALESCE(MAX(id_item), 0) + 1 FROM alba0011")
+                proximo_id_item = cursor.fetchone()[0]
+
+                cursor.execute("""
+                    INSERT INTO alba0011 (
+                        recnum, id_item, id_oc, id_produto, cd_cliente, qt_produto, vl_unitario,
+                        pc_desc_coml, pc_desc_fiscal, vl_unit_final, vl_produto,
+                        pc_ipi, vl_ipi, pc_icms, vl_icms, pc_icmsst, vl_icmsst,
+                        vl_total, pc_comissao, vl_comissao, fl_status, tx_obs, fl_comissao
+                    ) VALUES (?, ?, ?, ?, '', ?, ?, ?, 0, ?, ?, 0, 0, 0, 0, 0, 0, ?, 0, 0, 'ATIVO', ?, 'S')
+                """, (
+                    proximo_recnum, proximo_id_item, id_oc, id_produto, qtd, unit, desc,
+                    total, total, total, obs
+                ))
+
+                conn.commit()
+                self.show_message("Item salvo com sucesso!", "success")
+                self.limpar()
+                self.carregar()
+            except Exception as e:
+                self.show_message(f"Erro ao salvar item: {str(e)}", "error")
+            finally:
+                conn.close()
+
+                id_oc = self.entry_id_oc.get()
+                produto_nome = self.combo_produto.get()
+                qtd = self.entry_qtd.get()
+                unit = self.entry_unit.get()
+                desc = self.entry_desc.get()
+                obs = self.entry_obs.get()
+
+                # Validações
+                if not id_oc:
+                    self.show_message("ID da Ordem de Compra é obrigatório", "warning")
+                    return
+                    
+                if not produto_nome:
+                    self.show_message("Selecione um produto", "warning")
+                    return
+                    
+                if not qtd or not unit:
+                    self.show_message("Quantidade e Valor Unitário são obrigatórios", "warning")
+                    return
+
+                try:
+                    qtd = float(qtd)
+                    unit = float(unit)
+                    desc = float(desc) if desc else 0
+                except ValueError:
+                    self.show_message("Valores numéricos inválidos", "error")
+                    return
+
+                id_produto = next((id for id, nome in self.produtos if nome == produto_nome), None)
+                if not id_produto:
+                    self.show_message("Produto não encontrado", "error")
+                    return
+
+                total = self.calcular_total()
+
+                conn = self.conectar()
+                cursor = conn.cursor()
+                try:
+                    # Obter o próximo recnum
+                    cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM alba0011")
+                    proximo_recnum = cursor.fetchone()[0]
+                    
+                    cursor.execute("""
+                        INSERT INTO alba0011 (
+                            recnum, id_oc, id_produto, cd_cliente, qt_produto, vl_unitario,
+                            pc_desc_coml, pc_desc_fiscal, vl_unit_final, vl_produto,
+                            pc_ipi, vl_ipi, pc_icms, vl_icms, pc_icmsst, vl_icmsst,
+                            vl_total, pc_comissao, vl_comissao, fl_status, tx_obs, fl_comissao
+                        ) VALUES (?, ?, ?, '', ?, ?, ?, 0, ?, ?, 0, 0, 0, 0, 0, 0, ?, 0, 0, 'ATIVO', ?, 'S')
+                    """, (proximo_recnum, id_oc, id_produto, qtd, unit, desc, total, total, total, obs))
+                    conn.commit()
+                    self.show_message("Item salvo com sucesso!", "success")
+                    self.limpar()
+                    self.carregar()
+                except Exception as e:
+                    self.show_message(f"Erro ao salvar item: {str(e)}", "error")
+                finally:
+                    conn.close()
 
     def remover(self):
         item = self.tree.focus()
         if not item:
-            messagebox.showwarning("Atenção", "Selecione um item para remover.")
+            self.show_message("Selecione um item para remover", "warning")
             return
             
         id_item = self.tree.item(item)["values"][0]
         
+        # Usar messagebox apenas para confirmação (diálogo interativo)
         resposta = messagebox.askyesno("Confirmar", "Deseja realmente remover este item?")
         if not resposta:
+            self.show_message("Operação cancelada", "info")
             return
             
         conn = self.conectar()
@@ -241,11 +417,11 @@ class ItemOrdemCompraWindow(BaseWindow):
         try:
             cursor.execute("DELETE FROM alba0011 WHERE id_item = ?", (id_item,))
             conn.commit()
-            messagebox.showinfo("Sucesso", "Item removido com sucesso!")
+            self.show_message("Item removido com sucesso!", "success")
             self.carregar()
             self.limpar()
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao remover item: {str(e)}")
+            self.show_message(f"Erro ao remover item: {str(e)}", "error")
         finally:
             conn.close()
 
@@ -263,6 +439,7 @@ class ItemOrdemCompraWindow(BaseWindow):
         for row in cursor.fetchall():
             self.tree.insert("", "end", values=row)
         conn.close()
+        self.show_message("Dados carregados", "info")
 
     def on_select(self, event):
         item = self.tree.item(self.tree.focus())
@@ -303,9 +480,12 @@ class ItemOrdemCompraWindow(BaseWindow):
             
             self.entry_obs.delete(0, tk.END)
             self.entry_obs.insert(0, obs)
+            
+            self.show_message(f"Item selecionado: {nome_produto}", "info")
 
     def limpar(self):
         """Limpa todos os campos do formulário"""
+        self.item_selecionado_id = None
         self.entry_id_oc.delete(0, tk.END)
         self.combo_produto.set("")
         self.entry_qtd.delete(0, tk.END)
@@ -315,4 +495,68 @@ class ItemOrdemCompraWindow(BaseWindow):
         self.entry_total.delete(0, tk.END)
         self.entry_total.config(state="readonly")
         self.entry_obs.delete(0, tk.END)
-        
+        self.show_message("Campos limpos", "info")
+
+    # Métodos de navegação (implementação básica)
+    def ir_primeiro(self):
+        children = self.tree.get_children()
+        if children:
+            self.tree.selection_set(children[0])
+            self.tree.focus(children[0])
+            self.tree.see(children[0])
+            # Simular evento de seleção
+            event = type('Event', (), {})()
+            self.on_select(event)
+            self.show_message("Primeiro registro", "info")
+
+    def ir_anterior(self):
+        current = self.tree.focus()
+        if current:
+            children = self.tree.get_children()
+            try:
+                current_index = children.index(current)
+                if current_index > 0:
+                    prev_item = children[current_index - 1]
+                    self.tree.selection_set(prev_item)
+                    self.tree.focus(prev_item)
+                    self.tree.see(prev_item)
+                    # Simular evento de seleção
+                    event = type('Event', (), {})()
+                    self.on_select(event)
+                    self.show_message("Registro anterior", "info")
+                else:
+                    self.show_message("Já está no primeiro registro", "warning")
+            except ValueError:
+                pass
+
+    def ir_proximo(self):
+        current = self.tree.focus()
+        if current:
+            children = self.tree.get_children()
+            try:
+                current_index = children.index(current)
+                if current_index < len(children) - 1:
+                    next_item = children[current_index + 1]
+                    self.tree.selection_set(next_item)
+                    self.tree.focus(next_item)
+                    self.tree.see(next_item)
+                    # Simular evento de seleção
+                    event = type('Event', (), {})()
+                    self.on_select(event)
+                    self.show_message("Próximo registro", "info")
+                else:
+                    self.show_message("Já está no último registro", "warning")
+            except ValueError:
+                pass
+
+    def ir_ultimo(self):
+        children = self.tree.get_children()
+        if children:
+            last_item = children[-1]
+            self.tree.selection_set(last_item)
+            self.tree.focus(last_item)
+            self.tree.see(last_item)
+            # Simular evento de seleção
+            event = type('Event', (), {})()
+            self.on_select(event)
+            self.show_message("Último registro", "info")

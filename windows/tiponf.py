@@ -1,7 +1,6 @@
 import ttkbootstrap as ttkb
 from ttkbootstrap.constants import *
 import tkinter as tk
-from tkinter import messagebox
 from estilo import aplicar_estilo
 from windows.base_window import BaseWindow
 import sqlite3
@@ -12,15 +11,19 @@ class TiponfWindow(BaseWindow):
         self.current_id = None
         aplicar_estilo(self)
         self.set_title("Cadastro de Tipos de Nota Fiscal")
-        self.config(width=700, height=500)
+        self.config(width=800, height=550)
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Barra de ferramentas no topo
-        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
-        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+        # Frame para barra de ferramentas e mensagens
+        top_frame = ttkb.Frame(main_frame)
+        top_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Barra de ferramentas no topo (lado esquerdo)
+        toolbar_frame = ttkb.Frame(top_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         # Container para os botões grudados
         button_container = ttkb.Frame(toolbar_frame)
@@ -48,6 +51,21 @@ class TiponfWindow(BaseWindow):
         ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Área de mensagens (lado direito)
+        message_frame = ttkb.Frame(top_frame, relief="sunken", borderwidth=2, padding=5)
+        message_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+
+        ttkb.Label(message_frame, text="Mensagens:", font=("Arial", 8, "bold")).pack(anchor=tk.W)
+        
+        self.message_label = ttkb.Label(
+            message_frame, 
+            text="Sistema pronto para uso", 
+            font=("Arial", 9),
+            foreground="blue",
+            wraplength=300
+        )
+        self.message_label.pack(anchor=tk.W, fill=tk.BOTH, expand=True)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -102,6 +120,7 @@ class TiponfWindow(BaseWindow):
         self.current_id = None
         self.limpar()
         self.entry_nome.focus()
+        self.show_message("Novo registro. Preencha os campos e salve.", "info")
 
     def salvar(self):
         try:
@@ -110,7 +129,7 @@ class TiponfWindow(BaseWindow):
             mapa = "1" if self.var_mapa.get() else "0"
 
             if not nome:
-                messagebox.showwarning("Atenção", "Nome é obrigatório.")
+                self.show_message("Nome é obrigatório.", "warning")
                 return
 
             conn = self.conectar()
@@ -126,14 +145,14 @@ class TiponfWindow(BaseWindow):
                         "INSERT INTO tiponf (recnum, nm_tiponf, fl_tiponf, fl_mapa) VALUES (?, ?, ?, ?)",
                         (next_recnum, nome, tipo, mapa)
                     )
-                    messagebox.showinfo("Sucesso", "Registro incluído com sucesso!")
+                    self.show_message(f"Tipo de NF '{nome}' incluído com sucesso!", "success")
                 else:
                     # Atualização
                     cursor.execute(
                         "UPDATE tiponf SET nm_tiponf=?, fl_tiponf=?, fl_mapa=? WHERE id_tiponf=?",
                         (nome, tipo, mapa, self.current_id)
                     )
-                    messagebox.showinfo("Sucesso", "Registro atualizado com sucesso!")
+                    self.show_message(f"Tipo de NF '{nome}' atualizado com sucesso!", "success")
 
                 conn.commit()
                 self.limpar()
@@ -141,44 +160,53 @@ class TiponfWindow(BaseWindow):
                 self.current_id = None
 
             except sqlite3.Error as e:
-                messagebox.showerror("Erro", f"Erro ao salvar registro: {str(e)}")
+                self.show_message(f"Erro ao salvar registro: {str(e)}", "error")
                 conn.rollback()
             finally:
                 conn.close()
 
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro inesperado: {str(e)}")
+            self.show_message(f"Erro inesperado: {str(e)}", "error")
 
     def remover(self):
         try:
             item = self.tree.focus()
             if not item:
-                messagebox.showwarning("Atenção", "Selecione um registro para remover.")
+                self.show_message("Selecione um registro para remover.", "warning")
                 return
 
-            if not messagebox.askyesno("Confirmar", "Deseja realmente remover este registro?"):
-                return
-
-            id_tiponf = self.tree.item(item)["values"][0]
-            conn = self.conectar()
-            cursor = conn.cursor()
-
-            try:
-                cursor.execute("DELETE FROM tiponf WHERE id_tiponf = ?", (id_tiponf,))
-                conn.commit()
-                messagebox.showinfo("Sucesso", "Registro removido com sucesso!")
-                self.limpar()
-                self.carregar()
-                self.current_id = None
-
-            except sqlite3.Error as e:
-                messagebox.showerror("Erro", f"Erro ao remover registro: {str(e)}")
-                conn.rollback()
-            finally:
-                conn.close()
+            item_values = self.tree.item(item)["values"]
+            id_tiponf = item_values[0]
+            nome = item_values[1]
+            
+            # Confirmar remoção através da área de mensagens
+            self.show_message(f"Pressione novamente 'Remover' para confirmar exclusão de '{nome}'", "warning")
+            
+            # Alterar temporariamente o comando do botão para confirmação
+            def confirmar_remocao():
+                try:
+                    conn = self.conectar()
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM tiponf WHERE id_tiponf = ?", (id_tiponf,))
+                    conn.commit()
+                    conn.close()
+                    self.carregar()
+                    self.limpar()
+                    self.show_message(f"Tipo de NF '{nome}' removido com sucesso!", "success")
+                except sqlite3.Error as e:
+                    self.show_message(f"Erro ao remover: {str(e)}", "error")
+                finally:
+                    # Restaurar comando original do botão
+                    self.btn_remover.config(command=self.remover)
+            
+            # Alterar comando do botão temporariamente
+            self.btn_remover.config(command=confirmar_remocao)
+            
+            # Restaurar comando original após 10 segundos
+            self.after(10000, lambda: self.btn_remover.config(command=self.remover))
 
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro inesperado: {str(e)}")
+            self.show_message(f"Erro inesperado: {str(e)}", "error")
 
     def carregar(self):
         try:
@@ -186,48 +214,63 @@ class TiponfWindow(BaseWindow):
             conn = self.conectar()
             cursor = conn.cursor()
             cursor.execute("SELECT id_tiponf, nm_tiponf, fl_tiponf, fl_mapa FROM tiponf ORDER BY nm_tiponf")
-            for row in cursor.fetchall():
+            resultados = cursor.fetchall()
+            for row in resultados:
                 self.tree.insert("", "end", values=row)
             conn.close()
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao carregar registros: {str(e)}")
+            self.show_message(f"Carregados {len(resultados)} tipos de nota fiscal", "success")
+        except sqlite3.Error as e:
+            self.show_message(f"Erro ao carregar dados: {str(e)}", "error")
 
     def on_select(self, event):
         try:
-            item = self.tree.focus()
-            if not item:
+            item = self.tree.item(self.tree.focus())
+            if not item or not item.get("values"):
                 return
-            values = self.tree.item(item)["values"]
-            if not values:
-                return
+            
+            values = item["values"]
+            if len(values) >= 4:
+                id_tiponf, nome, tipo, mapa = values
+                self.current_id = id_tiponf
+                
+                self.entry_nome.delete(0, tk.END)
+                self.entry_nome.insert(0, nome or "")
+                
+                self.combo_tipo.set(tipo if tipo else "")
 
-            self.current_id = values[0]
-            nome = values[1]
-            tipo = values[2]
-
-            # Preencher os campos
-            self.entry_nome.delete(0, tk.END)
-            self.entry_nome.insert(0, nome)
-            self.combo_tipo.set(tipo if tipo else "")
-
-            # Buscar o valor real do mapa no banco de dados
-            conn = self.conectar()
-            cursor = conn.cursor()
-            cursor.execute("SELECT fl_mapa FROM tiponf WHERE id_tiponf = ?", (self.current_id,))
-            result = cursor.fetchone()
-            if result:
-                mapa_value = result[0]
-                # Converter para boolean - aceita tanto string quanto número
-                self.var_mapa.set(str(mapa_value) == "1" or mapa_value == 1)
-            conn.close()
-
+                # Buscar o valor real do mapa no banco de dados
+                conn = self.conectar()
+                cursor = conn.cursor()
+                cursor.execute("SELECT fl_mapa FROM tiponf WHERE id_tiponf = ?", (self.current_id,))
+                result = cursor.fetchone()
+                if result:
+                    mapa_value = result[0]
+                    # Converter para boolean - aceita tanto string quanto número
+                    self.var_mapa.set(str(mapa_value) == "1" or mapa_value == 1)
+                conn.close()
+                
+                self.show_message(f"Tipo selecionado para edição: {nome}", "info")
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao selecionar registro: {str(e)}")
+            self.show_message(f"Erro ao selecionar: {str(e)}", "error")
 
     def limpar(self):
+        """Limpa todos os campos do formulário"""
+        self.current_id = None
         self.entry_nome.delete(0, tk.END)
         self.combo_tipo.set("")
         self.var_mapa.set(False)
+
+    def show_message(self, message, msg_type="info"):
+        """Exibe mensagem na interface"""
+        colors = {
+            "success": "green",
+            "error": "red",
+            "warning": "orange",
+            "info": "blue"
+        }
+        self.message_label.config(text=message, foreground=colors.get(msg_type, "black"))
+        # Auto-limpar mensagem após 5 segundos
+        self.after(5000, lambda: self.message_label.config(text="Sistema pronto para uso", foreground="blue"))
 
     def ir_primeiro(self):
         try:
@@ -239,7 +282,7 @@ class TiponfWindow(BaseWindow):
                 self.tree.see(first_item)
                 self.on_select(None)
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao navegar: {str(e)}")
+            self.show_message(f"Erro ao navegar: {str(e)}", "error")
 
     def ir_anterior(self):
         try:
@@ -256,7 +299,7 @@ class TiponfWindow(BaseWindow):
                 self.tree.see(prev_item)
                 self.on_select(None)
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao navegar: {str(e)}")
+            self.show_message(f"Erro ao navegar: {str(e)}", "error")
 
     def ir_proximo(self):
         try:
@@ -274,7 +317,7 @@ class TiponfWindow(BaseWindow):
                 self.tree.see(next_item)
                 self.on_select(None)
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao navegar: {str(e)}")
+            self.show_message(f"Erro ao navegar: {str(e)}", "error")
 
     def ir_ultimo(self):
         try:
@@ -286,5 +329,5 @@ class TiponfWindow(BaseWindow):
                 self.tree.see(last_item)
                 self.on_select(None)
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao navegar: {str(e)}")
+            self.show_message(f"Erro inesperado: {str(e)}", "error")
         

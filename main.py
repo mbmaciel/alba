@@ -29,7 +29,7 @@ class App(ttkb.Window):
         super().__init__(themename="flatly")
         aplicar_estilo(self)
         self.title("Sistema Alba")
-        self.geometry("1100x600")
+        self.geometry("1200x800")
 
         self.mdi = MDIContainer(self)
         self.mdi.pack(fill=tk.BOTH, expand=True)

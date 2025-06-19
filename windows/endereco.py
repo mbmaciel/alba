@@ -18,12 +18,6 @@ class EnderecoWindow(BaseWindow):
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Frame para mensagens
-        self.message_frame = ttkb.Frame(main_frame, padding=5)
-        self.message_frame.pack(fill=tk.X, pady=(0, 10))
-        self.message_label = ttkb.Label(self.message_frame, text="", wraplength=800)
-        self.message_label.pack(fill=tk.X)
-
         # Barra de ferramentas no topo
         toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
         toolbar_frame.pack(fill=tk.X, pady=(0, 15))
@@ -54,6 +48,15 @@ class EnderecoWindow(BaseWindow):
         ttkb.Button(nav_container, text="◀", command=self.ir_anterior, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
+
+        # Área de mensagens ao lado dos comandos
+        self.message_label = ttkb.Label(
+            toolbar_frame, 
+            text="", 
+            font=("Arial", 9),
+            padding=(10, 0)
+        )
+        self.message_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -144,28 +147,62 @@ class EnderecoWindow(BaseWindow):
                 self.show_message("Preencha os campos obrigatórios (Pessoa e CEP).", "warning")
                 return
 
+            if not tipo:
+                self.show_message("Selecione o tipo de endereço.", "warning")
+                return
+
             conn = self.conectar()
             cursor = conn.cursor()
 
             if self.current_recnum is None:
+                # Verificar se já existe um endereço do mesmo tipo para esta pessoa
+                cursor.execute("""
+                    SELECT COUNT(*) FROM alba0002 
+                    WHERE id_pessoa = ? AND tp_ender = ?
+                """, (id_pessoa, tipo))
+                
+                if cursor.fetchone()[0] > 0:
+                    self.show_message(f"Esta pessoa já possui um endereço do tipo '{tipo}'. Use a edição para alterar.", "warning")
+                    conn.close()
+                    return
+
                 cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM alba0002")
                 self.current_recnum = cursor.fetchone()[0]
                 cursor.execute("""
                     INSERT INTO alba0002 (recnum, id_pessoa, tp_ender, cd_cep, nr_numero, nm_compl)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (self.current_recnum, id_pessoa, tipo, cep, numero, compl))
+                self.show_message("Registro salvo com sucesso!", "success")
             else:
+                # Para UPDATE, verificar se não está criando conflito com outro registro
+                cursor.execute("""
+                    SELECT COUNT(*) FROM alba0002 
+                    WHERE id_pessoa = ? AND tp_ender = ? AND recnum != ?
+                """, (id_pessoa, tipo, self.current_recnum))
+                
+                if cursor.fetchone()[0] > 0:
+                    self.show_message(f"Esta pessoa já possui outro endereço do tipo '{tipo}'.", "warning")
+                    conn.close()
+                    return
+
                 cursor.execute("""
                     UPDATE alba0002
                     SET id_pessoa=?, tp_ender=?, cd_cep=?, nr_numero=?, nm_compl=?
                     WHERE recnum=?
                 """, (id_pessoa, tipo, cep, numero, compl, self.current_recnum))
+                self.show_message("Registro atualizado com sucesso!", "success")
 
             conn.commit()
             conn.close()
-            self.show_message("Registro salvo com sucesso!", "success")
             self.limpar()
             self.carregar()
+            
+        except sqlite3.IntegrityError as e:
+            error_msg = str(e)
+            if "UNIQUE constraint failed" in error_msg and "id_pessoa" in error_msg and "tp_ender" in error_msg:
+                self.show_message("Esta pessoa já possui um endereço deste tipo. Cada pessoa pode ter apenas um endereço por tipo.", "error")
+            else:
+                self.show_message(f"Erro de integridade: {error_msg}", "error")
         except Exception as e:
             self.show_message(f"Erro ao salvar: {str(e)}", "danger")
 
@@ -210,10 +247,11 @@ class EnderecoWindow(BaseWindow):
         item = self.tree.item(self.tree.focus())
         if not item:
             return
-        _, pessoa_nome, tipo, cep, numero, compl = item["values"]
+        
+        recnum, pessoa_nome, tipo, cep, numero, compl = item["values"]
+        self.current_recnum = recnum
         
         self.combo_pessoa.set(pessoa_nome or "")
-        
         self.combo_tipo.set(tipo or "")
         
         self.entry_cep.delete(0, tk.END)
@@ -226,15 +264,19 @@ class EnderecoWindow(BaseWindow):
         self.entry_compl.insert(0, compl or "")
 
     def show_message(self, message, message_type="info"):
-        self.message_label.configure(text=message)
-        if message_type == "success":
-            self.message_label.configure(foreground="green")
-        elif message_type == "warning":
-            self.message_label.configure(foreground="orange")
-        elif message_type == "danger":
-            self.message_label.configure(foreground="red")
-        else:
-            self.message_label.configure(foreground="black")
+        """Exibe mensagem na área de mensagens com cores baseadas no tipo"""
+        colors = {
+            "info": "blue",
+            "success": "green", 
+            "warning": "orange",
+            "error": "red",
+            "danger": "red"
+        }
+        
+        self.message_label.config(
+            text=message,
+            foreground=colors.get(message_type, "blue")
+        )
 
     def limpar(self):
         self.combo_pessoa.set("")
