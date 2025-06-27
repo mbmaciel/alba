@@ -203,8 +203,17 @@ class OrdemCompraWindow(BaseWindow):
             nome_cliente = self.combo_cliente.get()
             id_cliente = next((id for id, nome in self.clientes if nome == nome_cliente), None)
 
+            # Tratar contato como opcional - se não selecionado, usar None ou um valor padrão
             nome_contato = self.combo_contato.get()
-            id_contato = next((id for id, nome in self.contatos if nome == nome_contato), None)
+            if nome_contato:
+                id_contato = next((id for id, nome in self.contatos if nome == nome_contato), None)
+            else:
+                # Se o campo é obrigatório no banco, você pode:
+                # 1. Criar um contato padrão ou
+                # 2. Exigir seleção de contato
+                # Por enquanto, vamos exigir a seleção:
+                messagebox.showerror("Erro", "Selecione um contato")
+                return
 
             # Converter data para formato do banco
             data_bd = self.converter_data_para_bd(self.entry_data.get())
@@ -220,7 +229,7 @@ class OrdemCompraWindow(BaseWindow):
                 id_empresa,
                 id_cliente,
                 data_bd,
-                id_contato,
+                id_contato,  # Agora sempre terá um valor válido
                 self.entry_pedido.get(),
                 self.entry_prazo.get(),
                 self.entry_condicoes.get(),

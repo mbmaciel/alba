@@ -18,9 +18,13 @@ class EnderecoWindow(BaseWindow):
         main_frame = ttkb.Frame(self, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Barra de ferramentas no topo
-        toolbar_frame = ttkb.Frame(main_frame, relief="raised", borderwidth=2, padding=5)
-        toolbar_frame.pack(fill=tk.X, pady=(0, 15))
+        # Frame para barra de ferramentas e mensagens
+        top_frame = ttkb.Frame(main_frame)
+        top_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Barra de ferramentas no topo (lado esquerdo)
+        toolbar_frame = ttkb.Frame(top_frame, relief="raised", borderwidth=2, padding=5)
+        toolbar_frame.pack(side=tk.LEFT, fill=tk.Y)
 
         # Container para os botões grudados
         button_container = ttkb.Frame(toolbar_frame)
@@ -49,14 +53,30 @@ class EnderecoWindow(BaseWindow):
         ttkb.Button(nav_container, text="▶", command=self.ir_proximo, width=3).pack(side=tk.LEFT)
         ttkb.Button(nav_container, text="⏭", command=self.ir_ultimo, width=3).pack(side=tk.LEFT)
 
-        # Área de mensagens ao lado dos comandos
+        # Separador visual
+        separator2 = ttkb.Separator(toolbar_frame, orient=tk.VERTICAL)
+        separator2.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0))
+
+        # Botão de refresh
+        refresh_container = ttkb.Frame(toolbar_frame)
+        refresh_container.pack(side=tk.LEFT, padx=(10, 0))
+
+        ttkb.Button(refresh_container, text="🔄", command=self.carregar, width=3).pack(side=tk.LEFT)
+
+        # Área de mensagens (lado direito)
+        message_frame = ttkb.Frame(top_frame, relief="sunken", borderwidth=2, padding=5)
+        message_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(10, 0))
+
+        ttkb.Label(message_frame, text="Mensagens:", font=("Arial", 8, "bold")).pack(anchor=tk.W)
+        
         self.message_label = ttkb.Label(
-            toolbar_frame, 
-            text="", 
+            message_frame, 
+            text="Sistema pronto para uso", 
             font=("Arial", 9),
-            padding=(10, 0)
+            foreground="blue",
+            wraplength=300
         )
-        self.message_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.message_label.pack(anchor=tk.W, fill=tk.BOTH, expand=True)
 
         # Frame para campos de entrada
         input_frame = ttkb.Frame(main_frame)
@@ -125,14 +145,19 @@ class EnderecoWindow(BaseWindow):
         """Limpa os campos para inclusão de novo registro"""
         self.limpar()
         self.combo_pessoa.focus()
+        self.show_message("Campos limpos. Selecione a pessoa e preencha os dados do endereço.", "info")
 
     def carregar_pessoas(self):
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id_pessoa, nm_razao FROM alba0001 ORDER BY nm_razao")
-        self.pessoas = cursor.fetchall()
-        conn.close()
-        self.combo_pessoa["values"] = [nome for _, nome in self.pessoas]
+        try:
+            conn = self.conectar()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id_pessoa, nm_razao FROM alba0001 ORDER BY nm_razao")
+            self.pessoas = cursor.fetchall()
+            conn.close()
+            self.combo_pessoa["values"] = [nome for _, nome in self.pessoas]
+            self.show_message(f"Carregadas {len(self.pessoas)} pessoas", "success")
+        except Exception as e:
+            self.show_message(f"ERRO ao carregar pessoas: {str(e)}", "error")
 
     def salvar(self):
         try:
@@ -144,11 +169,11 @@ class EnderecoWindow(BaseWindow):
             compl = self.entry_compl.get()
 
             if not id_pessoa or not cep:
-                self.show_message("Preencha os campos obrigatórios (Pessoa e CEP).", "warning")
+                self.show_message("ATENÇÃO: Preencha os campos obrigatórios (Pessoa e CEP).", "warning")
                 return
 
             if not tipo:
-                self.show_message("Selecione o tipo de endereço.", "warning")
+                self.show_message("ATENÇÃO: Selecione o tipo de endereço.", "warning")
                 return
 
             conn = self.conectar()
@@ -162,7 +187,7 @@ class EnderecoWindow(BaseWindow):
                 """, (id_pessoa, tipo))
                 
                 if cursor.fetchone()[0] > 0:
-                    self.show_message(f"Esta pessoa já possui um endereço do tipo '{tipo}'. Use a edição para alterar.", "warning")
+                    self.show_message(f"ERRO: Esta pessoa já possui um endereço do tipo '{tipo}'. Use a edição para alterar.", "error")
                     conn.close()
                     return
 
@@ -172,7 +197,7 @@ class EnderecoWindow(BaseWindow):
                     INSERT INTO alba0002 (recnum, id_pessoa, tp_ender, cd_cep, nr_numero, nm_compl)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (self.current_recnum, id_pessoa, tipo, cep, numero, compl))
-                self.show_message("Registro salvo com sucesso!", "success")
+                self.show_message(f"Endereço salvo com sucesso para {nome_pessoa}!", "success")
             else:
                 # Para UPDATE, verificar se não está criando conflito com outro registro
                 cursor.execute("""
@@ -181,7 +206,7 @@ class EnderecoWindow(BaseWindow):
                 """, (id_pessoa, tipo, self.current_recnum))
                 
                 if cursor.fetchone()[0] > 0:
-                    self.show_message(f"Esta pessoa já possui outro endereço do tipo '{tipo}'.", "warning")
+                    self.show_message(f"ERRO: Esta pessoa já possui outro endereço do tipo '{tipo}'.", "error")
                     conn.close()
                     return
 
@@ -190,7 +215,7 @@ class EnderecoWindow(BaseWindow):
                     SET id_pessoa=?, tp_ender=?, cd_cep=?, nr_numero=?, nm_compl=?
                     WHERE recnum=?
                 """, (id_pessoa, tipo, cep, numero, compl, self.current_recnum))
-                self.show_message("Registro atualizado com sucesso!", "success")
+                self.show_message(f"Endereço atualizado com sucesso para {nome_pessoa}!", "success")
 
             conn.commit()
             conn.close()
@@ -200,30 +225,54 @@ class EnderecoWindow(BaseWindow):
         except sqlite3.IntegrityError as e:
             error_msg = str(e)
             if "UNIQUE constraint failed" in error_msg and "id_pessoa" in error_msg and "tp_ender" in error_msg:
-                self.show_message("Esta pessoa já possui um endereço deste tipo. Cada pessoa pode ter apenas um endereço por tipo.", "error")
+                self.show_message("ERRO: Esta pessoa já possui um endereço deste tipo. Cada pessoa pode ter apenas um endereço por tipo.", "error")
             else:
-                self.show_message(f"Erro de integridade: {error_msg}", "error")
+                self.show_message(f"ERRO de integridade: {error_msg}", "error")
         except Exception as e:
-            self.show_message(f"Erro ao salvar: {str(e)}", "danger")
+            self.show_message(f"ERRO ao salvar: {str(e)}", "error")
 
     def remover(self):
         try:
             item = self.tree.focus()
             if not item:
-                self.show_message("Selecione um registro para remover.", "warning")
+                self.show_message("ATENÇÃO: Selecione um registro para remover.", "warning")
                 return
 
-            conn = self.conectar()
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM alba0002 WHERE recnum = ?", (self.current_recnum,))
-            conn.commit()
-            conn.close()
+            item_data = self.tree.item(item)
+            if not item_data.get("values"):
+                self.show_message("ATENÇÃO: Selecione um registro válido para remover.", "warning")
+                return
 
-            self.show_message("Registro removido com sucesso!", "success")
-            self.limpar()
-            self.carregar()
+            pessoa_nome = item_data["values"][1]
+            tipo_endereco = item_data["values"][2]
+
+            # Confirmar remoção através da área de mensagens
+            self.show_message(f"Pressione novamente 'Remover' para confirmar exclusão do endereço {tipo_endereco} de {pessoa_nome}", "warning")
+            
+            # Alterar temporariamente o comando do botão para confirmação
+            def confirmar_remocao():
+                try:
+                    conn = self.conectar()
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM alba0002 WHERE recnum = ?", (self.current_recnum,))
+                    conn.commit()
+                    conn.close()
+                    self.show_message(f"Endereço removido com sucesso!", "success")
+                    self.limpar()
+                    self.carregar()
+                except Exception as e:
+                    self.show_message(f"ERRO ao remover: {str(e)}", "error")
+                finally:
+                    # Restaurar comando original do botão
+                    self.btn_remover.config(command=self.remover)
+            
+            # Alterar comando do botão temporariamente
+            self.btn_remover.config(command=confirmar_remocao)
+            
+            # Restaurar comando original após 10 segundos
+            self.after(10000, lambda: self.btn_remover.config(command=self.remover))
         except Exception as e:
-            self.show_message(f"Erro ao remover: {str(e)}", "danger")
+            self.show_message(f"ERRO ao remover: {str(e)}", "error")
 
     def carregar(self):
         try:
@@ -236,16 +285,18 @@ class EnderecoWindow(BaseWindow):
                 LEFT JOIN alba0001 p ON e.id_pessoa = p.id_pessoa
                 ORDER BY e.recnum
             """)
-            for row in cursor.fetchall():
+            resultados = cursor.fetchall()
+            for row in resultados:
                 recnum, id_pessoa, tipo, cep, numero, compl, nome = row
                 self.tree.insert("", "end", values=(recnum, nome or f"ID {id_pessoa}", tipo, cep, numero, compl))
             conn.close()
+            self.show_message(f"Carregados {len(resultados)} endereços", "success")
         except Exception as e:
-            self.show_message(f"Erro ao carregar dados: {str(e)}", "danger")
+            self.show_message(f"ERRO ao carregar dados: {str(e)}", "error")
 
     def on_select(self, event):
         item = self.tree.item(self.tree.focus())
-        if not item:
+        if not item or not item.get("values"):
             return
         
         recnum, pessoa_nome, tipo, cep, numero, compl = item["values"]
@@ -262,20 +313,21 @@ class EnderecoWindow(BaseWindow):
         
         self.entry_compl.delete(0, tk.END)
         self.entry_compl.insert(0, compl or "")
+        
+        self.show_message(f"Endereço selecionado: {pessoa_nome} - {tipo}", "info")
 
-    def show_message(self, message, message_type="info"):
+    def show_message(self, message, msg_type="info"):
         """Exibe mensagem na área de mensagens com cores baseadas no tipo"""
         colors = {
             "info": "blue",
             "success": "green", 
             "warning": "orange",
-            "error": "red",
-            "danger": "red"
+            "error": "red"
         }
         
         self.message_label.config(
             text=message,
-            foreground=colors.get(message_type, "blue")
+            foreground=colors.get(msg_type, "blue")
         )
 
     def limpar(self):
@@ -285,7 +337,7 @@ class EnderecoWindow(BaseWindow):
         self.entry_numero.delete(0, tk.END)
         self.entry_compl.delete(0, tk.END)
         self.current_recnum = None
-        self.show_message("")
+        self.show_message("Campos limpos", "info")
 
     def ir_primeiro(self):
         if self.tree.get_children():
@@ -293,6 +345,7 @@ class EnderecoWindow(BaseWindow):
             self.tree.selection_set(primeiro)
             self.tree.focus(primeiro)
             self.on_select(None)
+            self.show_message("Primeiro registro selecionado", "info")
 
     def ir_ultimo(self):
         if self.tree.get_children():
@@ -300,6 +353,7 @@ class EnderecoWindow(BaseWindow):
             self.tree.selection_set(ultimo)
             self.tree.focus(ultimo)
             self.on_select(None)
+            self.show_message("Último registro selecionado", "info")
 
     def ir_anterior(self):
         selecionado = self.tree.selection()
@@ -310,6 +364,9 @@ class EnderecoWindow(BaseWindow):
                 self.tree.selection_set(anterior)
                 self.tree.focus(anterior)
                 self.on_select(None)
+                self.show_message("Registro anterior selecionado", "info")
+        else:
+            self.ir_ultimo()
 
     def ir_proximo(self):
         selecionado = self.tree.selection()
@@ -320,4 +377,7 @@ class EnderecoWindow(BaseWindow):
                 self.tree.selection_set(proximo)
                 self.tree.focus(proximo)
                 self.on_select(None)
+                self.show_message("Próximo registro selecionado", "info")
+        else:
+            self.ir_primeiro()
         

@@ -12,6 +12,7 @@ class AtividWindow(BaseWindow):
         self.set_title("Cadastro de Atividades")
         self.config(width=700, height=500)
         self.recnum = None
+        self.editing_record = None  # Para controlar se estamos editando um registro existente
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)
@@ -100,63 +101,120 @@ class AtividWindow(BaseWindow):
 
         self.carregar()
 
+    def show_message(self, message, msg_type="info"):
+        """Exibe mensagem na área de mensagens com cores baseadas no tipo"""
+        colors = {
+            "info": "blue",
+            "success": "green", 
+            "warning": "orange",
+            "error": "red"
+        }
+        
+        self.message_label.config(
+            text=message,
+            foreground=colors.get(msg_type, "blue")
+        )
+
     def novo(self):
         """Limpa os campos para inclusão de novo registro"""
         self.limpar()
         self.recnum = None
+        self.editing_record = None
         self.entry_desc.focus()
+        self.show_message("Campos limpos. Digite a descrição da nova atividade.", "info")
 
     def salvar(self):
         desc = self.entry_desc.get()
         if not desc:
-            self.show_message("Descrição obrigatória.", "warning")
+            self.show_message("ATENÇÃO: Descrição obrigatória.", "warning")
             return
+            
         conn = self.conectar()
         cursor = conn.cursor()
 
-        # Verifica se já existe uma atividade com a mesma descrição
-        cursor.execute("SELECT id_atividade FROM ativid WHERE nm_atividade = ?", (desc,))
-        row = cursor.fetchone()
+        try:
+            if self.editing_record:
+                # Estamos editando um registro existente
+                # Verifica se a descrição foi alterada e se já existe outra atividade com a nova descrição
+                if desc != self.editing_record:
+                    cursor.execute("SELECT id_atividade FROM ativid WHERE nm_atividade = ?", (desc,))
+                    row = cursor.fetchone()
+                    if row:
+                        self.show_message(f"ERRO: Já existe uma atividade com a descrição '{desc}'.", "error")
+                        conn.close()
+                        return
+                
+                # Atualiza o registro existente usando o ID armazenado
+                cursor.execute("UPDATE ativid SET nm_atividade = ? WHERE id_atividade = ?", 
+                             (desc, self.current_id))
+                self.show_message(f"Atividade '{desc}' atualizada com sucesso!", "success")
+            else:
+                # Novo registro
+                cursor.execute("SELECT id_atividade FROM ativid WHERE nm_atividade = ?", (desc,))
+                row = cursor.fetchone()
+                
+                if row:
+                    self.show_message(f"ERRO: Já existe uma atividade com a descrição '{desc}'.", "error")
+                    conn.close()
+                    return
+                
+                # Insere novo registro
+                cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM ativid")
+                next_recnum = cursor.fetchone()[0]
+                cursor.execute("INSERT INTO ativid (recnum, nm_atividade) VALUES (?, ?)", (next_recnum, desc))
+                self.show_message(f"Atividade '{desc}' salva com sucesso!", "success")
 
-        if row:
-            # Se já existe, faz UPDATE
-            id_atividade = row[0]
-            cursor.execute("UPDATE ativid SET nm_atividade = ? WHERE id_atividade = ?", (desc, id_atividade))
-            self.show_message("Atividade atualizada com sucesso!", "success")
-        else:
-            # Se não existe, faz INSERT com recnum
-            cursor.execute("SELECT COALESCE(MAX(recnum), 0) + 1 FROM ativid")
-            next_recnum = cursor.fetchone()[0]
-            cursor.execute("INSERT INTO ativid (recnum, nm_atividade) VALUES (?, ?)", (next_recnum, desc))
-            self.show_message("Atividade salva com sucesso!", "success")
-
-        conn.commit()
-        conn.close()
-        self.limpar()
-        self.carregar()
+            conn.commit()
+            self.editing_record = None
+            self.current_id = None
+            self.limpar()
+            self.carregar()
+            
+        except Exception as e:
+            conn.rollback()
+            self.show_message(f"ERRO ao salvar atividade: {str(e)}", "error")
+        finally:
+            conn.close()
 
     def remover(self):
         item = self.tree.focus()
         if not item:
-            self.show_message("Selecione uma atividade para remover.", "warning")
+            self.show_message("ATENÇÃO: Selecione uma atividade para remover.", "warning")
             return
 
-        id_atividade = self.tree.item(item)["values"][0]
+        item_data = self.tree.item(item)
+        if not item_data.get("values"):
+            self.show_message("ATENÇÃO: Selecione um registro válido para remover.", "warning")
+            return
 
-        # Substituir messagebox por show_message para confirmação
-        self.show_message("Clique novamente em Remover para confirmar a exclusão.", "warning")
-        self.btn_remover.config(command=lambda: self.remover_confirmado(id_atividade))
+        id_atividade = item_data["values"][0]
+        desc_atividade = item_data["values"][1]
 
-    def remover_confirmado(self, id_atividade):
-        conn = self.conectar()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM ativid WHERE id_atividade = ?", (id_atividade,))
-        conn.commit()
-        conn.close()
-        self.carregar()
-        self.limpar()
-        self.show_message("Atividade removida com sucesso!", "success")
-        self.btn_remover.config(command=self.remover)
+        # Confirmar remoção através da área de mensagens
+        self.show_message(f"Pressione novamente 'Remover' para confirmar exclusão de '{desc_atividade}'", "warning")
+        
+        # Alterar temporariamente o comando do botão para confirmação
+        def confirmar_remocao():
+            try:
+                conn = self.conectar()
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM ativid WHERE id_atividade = ?", (id_atividade,))
+                conn.commit()
+                conn.close()
+                self.carregar()
+                self.limpar()
+                self.show_message(f"Atividade '{desc_atividade}' removida com sucesso!", "success")
+            except Exception as e:
+                self.show_message(f"ERRO ao remover atividade: {str(e)}", "error")
+            finally:
+                # Restaurar comando original do botão
+                self.btn_remover.config(command=self.remover)
+        
+        # Alterar comando do botão temporariamente
+        self.btn_remover.config(command=confirmar_remocao)
+        
+        # Restaurar comando original após 10 segundos
+        self.after(10000, lambda: self.btn_remover.config(command=self.remover))
 
     def carregar(self):
         try:
@@ -164,11 +222,13 @@ class AtividWindow(BaseWindow):
             conn = self.conectar()
             cursor = conn.cursor()
             cursor.execute("SELECT id_atividade, nm_atividade FROM ativid ORDER BY nm_atividade")
-            for row in cursor.fetchall():
+            resultados = cursor.fetchall()
+            for row in resultados:
                 self.tree.insert("", "end", values=row)
             conn.close()
-        except sqlite3.Error as e:
-            self.show_message(f"Erro ao carregar dados: {str(e)}", "error")
+            self.show_message(f"Carregadas {len(resultados)} atividades", "success")
+        except Exception as e:
+            self.show_message(f"ERRO ao carregar dados: {str(e)}", "error")
 
     def on_select(self, event):
         item = self.tree.focus()
@@ -176,14 +236,18 @@ class AtividWindow(BaseWindow):
             return
         values = self.tree.item(item)["values"]
         if values:
-            self.recnum = values[0]
+            self.current_id = values[0]  # Armazena o ID para edição
+            self.editing_record = values[1]  # Armazena a descrição original
             self.entry_desc.delete(0, tk.END)
             self.entry_desc.insert(0, values[1])
+            self.show_message(f"Atividade selecionada: {values[1]}", "info")
 
     def limpar(self):
         """Limpa todos os campos do formulário"""
         self.entry_desc.delete(0, tk.END)
         self.recnum = None
+        self.editing_record = None
+        self.current_id = None
 
     def ir_primeiro(self):
         """Navega para o primeiro registro"""
@@ -194,6 +258,7 @@ class AtividWindow(BaseWindow):
             self.tree.focus(first_item)
             self.tree.see(first_item)
             self.on_select(None)
+            self.show_message("Primeiro registro selecionado", "info")
 
     def ir_ultimo(self):
         """Navega para o último registro"""
@@ -204,6 +269,7 @@ class AtividWindow(BaseWindow):
             self.tree.focus(last_item)
             self.tree.see(last_item)
             self.on_select(None)
+            self.show_message("Último registro selecionado", "info")
 
     def ir_anterior(self):
         """Navega para o registro anterior"""
@@ -219,6 +285,7 @@ class AtividWindow(BaseWindow):
             self.tree.focus(prev_item)
             self.tree.see(prev_item)
             self.on_select(None)
+            self.show_message("Registro anterior selecionado", "info")
         else:
             self.ir_ultimo()
 
@@ -236,6 +303,6 @@ class AtividWindow(BaseWindow):
             self.tree.focus(next_item)
             self.tree.see(next_item)
             self.on_select(None)
+            self.show_message("Próximo registro selecionado", "info")
         else:
             self.ir_primeiro()
-            

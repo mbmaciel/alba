@@ -11,7 +11,7 @@ class ProdutoFiscalWindow(BaseWindow):
         super().__init__(master)
         aplicar_estilo(self)
         self.set_title("Cadastro Produto Fiscal")
-        self.config(width=1200, height=800)
+        self.config(width=1400, height=800)  # Aumentada a largura de 1200 para 1400
 
         # Frame principal
         main_frame = ttkb.Frame(self, padding=10)
@@ -76,19 +76,6 @@ class ProdutoFiscalWindow(BaseWindow):
                 ("EX TIPI", "cd_ex_tipi"),
                 ("Gênero", "cd_genero")
             ]),
-            ("Tributação", [
-                ("CFOP", "cd_cfop"),
-                ("CST ICMS", "cd_cst_icms"),
-                ("CST IPI", "cd_cst_ipi"),
-                ("CST PIS", "cd_cst_pis"),
-                ("CST COFINS", "cd_cst_cofins"),
-                ("Alíquota ICMS", "vl_aliq_icms"),
-                ("Alíquota IPI", "vl_aliq_ipi"),
-                ("Alíquota PIS", "vl_aliq_pis"),
-                ("Alíquota COFINS", "vl_aliq_cofins"),
-                ("Motivo Desoneração", "cd_motivo_desoneracao"),
-                ("Valor ICMS Desonerado", "vl_icms_desonerado")
-            ]),
             ("Serviço", [
                 ("Serviço", "cd_servico"),
                 ("Lista Serviço", "cd_lista_servico"),
@@ -100,24 +87,10 @@ class ProdutoFiscalWindow(BaseWindow):
                 ("Situação Tributária", "cd_situacao_tributaria"),
                 ("Tipo Item", "cd_tipo_item"),
                 ("Benefício Fiscal", "cd_beneficio_fiscal")
-            ]),
-            ("Códigos Tributação", [
-                ("Tributação", "cd_codigo_tributacao"),
-                ("Municipal", "cd_codigo_tributacao_municipio"),
-                ("Estadual", "cd_codigo_tributacao_estadual"),
-                ("Federal", "cd_codigo_tributacao_federal"),
-                ("Internacional", "cd_codigo_tributacao_internacional"),
-                ("Outros", "cd_codigo_tributacao_outros"),
-                ("Simples", "cd_codigo_tributacao_simples"),
-                ("Especial", "cd_codigo_tributacao_especial"),
-                ("Substituição", "cd_codigo_tributacao_substituicao"),
-                ("Isenção", "cd_codigo_tributacao_isenção"),
-                ("Redução", "cd_codigo_tributacao_reducao"),
-                ("Diferimento", "cd_codigo_tributacao_diferimento"),
-                ("Suspensão", "cd_codigo_tributacao_suspensao")
             ])
         ]
 
+        # Processar abas normais
         for tab_name, fields in abas:
             frame = ttkb.Frame(notebook)
             self.frames[tab_name] = frame
@@ -145,6 +118,120 @@ class ProdutoFiscalWindow(BaseWindow):
                     entry = ttkb.Entry(frame, width=40)
                     entry.grid(row=i, column=1, padx=5, pady=3)
                     setattr(self, f"entry_{var}", entry)
+
+        # Aba especial "Tributação" com layout em colunas
+        tributacao_frame = ttkb.Frame(notebook)
+        self.frames["Tributação"] = tributacao_frame
+        notebook.add(tributacao_frame, text="Tributação")
+
+        # Campos da aba Tributação organizados em 3 colunas
+        tributacao_fields = [
+            ("CFOP", "cd_cfop"),
+            ("CST ICMS", "cd_cst_icms"),
+            ("CST IPI", "cd_cst_ipi"),
+            ("CST PIS", "cd_cst_pis"),
+            ("CST COFINS", "cd_cst_cofins"),
+            ("Alíquota ICMS", "vl_aliq_icms"),
+            ("Alíquota IPI", "vl_aliq_ipi"),
+            ("Alíquota PIS", "vl_aliq_pis"),
+            ("Alíquota COFINS", "vl_aliq_cofins"),
+            ("Motivo Desoneração", "cd_motivo_desoneracao"),
+            ("Valor ICMS Desonerado", "vl_icms_desonerado")
+        ]
+
+        # Organizar em 3 colunas
+        num_cols = 3
+        col_width = 25  # Largura dos campos de entrada
+
+        for i, (label, var) in enumerate(tributacao_fields):
+            row = i % ((len(tributacao_fields) + num_cols - 1) // num_cols)  # Calcular linha
+            col_group = i // ((len(tributacao_fields) + num_cols - 1) // num_cols)  # Calcular grupo de coluna
+            
+            # Posições das colunas: 0,1 | 2,3 | 4,5
+            label_col = col_group * 2
+            entry_col = col_group * 2 + 1
+            
+            # Label
+            ttkb.Label(tributacao_frame, text=label).grid(
+                row=row, 
+                column=label_col, 
+                sticky=tk.W, 
+                padx=(5, 2), 
+                pady=3
+            )
+            
+            # Entry
+            entry = ttkb.Entry(tributacao_frame, width=col_width)
+            entry.grid(
+                row=row, 
+                column=entry_col, 
+                padx=(2, 15), 
+                pady=3,
+                sticky=tk.W
+            )
+            setattr(self, f"entry_{var}", entry)
+
+        # Configurar peso das colunas para distribuição uniforme
+        for col in range(6):  # 3 grupos x 2 colunas cada
+            tributacao_frame.columnconfigure(col, weight=1 if col % 2 == 1 else 0)
+
+        # Aba especial "Códigos Tributação" com layout em colunas
+        codigos_frame = ttkb.Frame(notebook)
+        self.frames["Códigos Tributação"] = codigos_frame
+        notebook.add(codigos_frame, text="Códigos Tributação")
+
+        # Campos da aba Códigos Tributação organizados em 3 colunas
+        codigos_fields = [
+            ("Tributação", "cd_codigo_tributacao"),
+            ("Municipal", "cd_codigo_tributacao_municipio"),
+            ("Estadual", "cd_codigo_tributacao_estadual"),
+            ("Federal", "cd_codigo_tributacao_federal"),
+            ("Internacional", "cd_codigo_tributacao_internacional"),
+            ("Outros", "cd_codigo_tributacao_outros"),
+            ("Simples", "cd_codigo_tributacao_simples"),
+            ("Especial", "cd_codigo_tributacao_especial"),
+            ("Substituição", "cd_codigo_tributacao_substituicao"),
+            ("Isenção", "cd_codigo_tributacao_isenção"),
+            ("Redução", "cd_codigo_tributacao_reducao"),
+            ("Diferimento", "cd_codigo_tributacao_diferimento"),
+            ("Suspensão", "cd_codigo_tributacao_suspensao")
+        ]
+
+        # Organizar em 3 colunas
+        num_cols = 3
+        col_width = 25  # Largura dos campos de entrada
+
+        for i, (label, var) in enumerate(codigos_fields):
+            row = i % ((len(codigos_fields) + num_cols - 1) // num_cols)  # Calcular linha
+            col_group = i // ((len(codigos_fields) + num_cols - 1) // num_cols)  # Calcular grupo de coluna
+            
+            # Posições das colunas: 0,1 | 2,3 | 4,5
+            label_col = col_group * 2
+            entry_col = col_group * 2 + 1
+            
+            # Label
+            ttkb.Label(codigos_frame, text=label).grid(
+                row=row, 
+                column=label_col, 
+                sticky=tk.W, 
+                padx=(5, 2), 
+                pady=3
+            )
+            
+            # Entry
+            entry = ttkb.Entry(codigos_frame, width=col_width)
+            entry.grid(
+                row=row, 
+                column=entry_col, 
+                padx=(2, 15), 
+                pady=3,
+                sticky=tk.W
+            )
+            setattr(self, f"entry_{var}", entry)
+
+        # Configurar peso das colunas para distribuição uniforme
+        for col in range(6):  # 3 grupos x 2 colunas cada
+            codigos_frame.columnconfigure(col, weight=1 if col % 2 == 1 else 0)
 
         # Frame para o Treeview (área expandida)
         tree_frame = ttkb.Frame(main_frame)
@@ -309,3 +396,56 @@ class ProdutoFiscalWindow(BaseWindow):
             if entry:
                 entry.delete(0, tk.END)
 
+    def ir_primeiro(self):
+        """Navega para o primeiro registro"""
+        children = self.tree.get_children()
+        if children:
+            first_item = children[0]
+            self.tree.selection_set(first_item)
+            self.tree.focus(first_item)
+            self.tree.see(first_item)
+            self.on_select(None)
+
+    def ir_ultimo(self):
+        """Navega para o último registro"""
+        children = self.tree.get_children()
+        if children:
+            last_item = children[-1]
+            self.tree.selection_set(last_item)
+            self.tree.focus(last_item)
+            self.tree.see(last_item)
+            self.on_select(None)
+
+    def ir_anterior(self):
+        """Navega para o registro anterior"""
+        selection = self.tree.selection()
+        if not selection:
+            self.ir_ultimo()
+            return
+
+        current = selection[0]
+        prev_item = self.tree.prev(current)
+        if prev_item:
+            self.tree.selection_set(prev_item)
+            self.tree.focus(prev_item)
+            self.tree.see(prev_item)
+            self.on_select(None)
+        else:
+            self.ir_ultimo()
+
+    def ir_proximo(self):
+        """Navega para o próximo registro"""
+        selection = self.tree.selection()
+        if not selection:
+            self.ir_primeiro()
+            return
+
+        current = selection[0]
+        next_item = self.tree.next(current)
+        if next_item:
+            self.tree.selection_set(next_item)
+            self.tree.focus(next_item)
+            self.tree.see(next_item)
+            self.on_select(None)
+        else:
+            self.ir_primeiro()
