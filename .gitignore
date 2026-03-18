@@ -1,0 +1,11 @@
+.qodo
+alba_zip_extracted/
+__pycache__/
+build/
+dist/
+alba.zip
+alba.exe
+.kiro/
+.venv/
+.venv-macos/
+database/

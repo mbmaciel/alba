@@ -1,0 +1,66 @@
+2025-09-21 12:33:08,372 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:33:08,389 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:33:28,076 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:33:28,078 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:33:47,404 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:33:47,406 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:34:00,363 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:34:00,364 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:35:36,963 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:35:36,964 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:36:02,220 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:36:02,222 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:36:11,187 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:36:11,190 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:36:13,875 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:36:13,878 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:36:29,807 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:36:29,809 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:36:45,975 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:36:45,977 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:37:54,335 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:37:54,338 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:38:00,311 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:38:00,313 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:38:06,239 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:38:06,242 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:38:18,367 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:38:18,369 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:38:25,599 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:38:25,601 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:38:50,883 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:38:50,884 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:40:15,454 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:40:15,456 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:41:07,390 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:41:07,392 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:44:08,345 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:44:08,347 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:44:15,997 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:44:15,998 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:44:18,566 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:44:18,567 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:44:48,897 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-09-21 12:44:48,899 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 23
+2025-09-21 12:48:28,383 - alba.recnum - INFO - Executando INSERT com tratamento de recnum para tipo 'NENHUM' na tabela tipo
+2025-09-21 12:48:28,383 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: tipo
+2025-09-21 12:48:28,386 - alba.recnum - INFO - Próximo recnum obtido com sucesso para tipo: 14
+2025-09-21 12:48:28,398 - alba.recnum - INFO - INSERT executado com sucesso: tipo 'NENHUM' com recnum 14
+2025-09-21 12:48:28,399 - alba.recnum - INFO - RECNUM_OP: INSERT tipo recnum=14 - SUCCESS
+2025-10-02 21:20:45,593 - alba.recnum - INFO - Executando INSERT com tratamento de recnum para tipo 'Nada' na tabela tipo
+2025-10-02 21:20:45,594 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: tipo
+2025-10-02 21:20:45,602 - alba.recnum - INFO - Próximo recnum obtido com sucesso para tipo: 15
+2025-10-02 21:20:45,637 - alba.recnum - INFO - INSERT executado com sucesso: tipo 'Nada' com recnum 15
+2025-10-02 21:20:45,637 - alba.recnum - INFO - RECNUM_OP: INSERT tipo recnum=15 - SUCCESS
+2025-11-02 18:00:02,480 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: ativid
+2025-11-02 18:00:02,503 - alba.recnum - INFO - Próximo recnum obtido com sucesso para ativid: 24
+2025-11-02 18:01:19,776 - alba.recnum - INFO - Executando INSERT com tratamento de recnum para tipo 'NOVO' na tabela tipo
+2025-11-02 18:01:19,776 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: tipo
+2025-11-02 18:01:19,776 - alba.recnum - INFO - Próximo recnum obtido com sucesso para tipo: 16
+2025-11-02 18:01:19,792 - alba.recnum - INFO - INSERT executado com sucesso: tipo 'NOVO' com recnum 16
+2025-11-02 18:01:19,792 - alba.recnum - INFO - RECNUM_OP: INSERT tipo recnum=16 - SUCCESS
+2025-11-02 18:04:03,830 - alba.recnum - INFO - Executando INSERT com tratamento de recnum para tipo 'NOVA DESCRIÇÃO' na tabela tipo
+2025-11-02 18:04:03,831 - alba.recnum - INFO - Iniciando obtenção de próximo recnum para tabela: tipo
+2025-11-02 18:04:03,833 - alba.recnum - INFO - Próximo recnum obtido com sucesso para tipo: 17
+2025-11-02 18:04:03,845 - alba.recnum - INFO - INSERT executado com sucesso: tipo 'NOVA DESCRIÇÃO' com recnum 17
+2025-11-02 18:04:03,845 - alba.recnum - INFO - RECNUM_OP: INSERT tipo recnum=17 - SUCCESS
