@@ -1,0 +1,106 @@
+==============================================
+  SISTEMA ALBA - INSTRUÇÕES DE INSTALAÇÃO
+          (Windows)
+==============================================
+
+----------------------------------------------
+PASSO 1 - INSTALAR O PYTHON
+----------------------------------------------
+
+1. Acesse: https://www.python.org/downloads/
+2. Clique em "Download Python 3.x.x" (versão mais recente)
+3. Execute o instalador baixado
+4. IMPORTANTE: na primeira tela do instalador, marque a opção
+   "Add Python to PATH" antes de clicar em "Install Now"
+5. Aguarde a instalação concluir e clique em "Close"
+
+Para verificar se o Python foi instalado corretamente, abra o
+Prompt de Comando (Win + R, digite "cmd", pressione Enter) e
+execute:
+
+    python --version
+
+Deve aparecer algo como: Python 3.x.x
+
+
+----------------------------------------------
+PASSO 2 - BAIXAR O SISTEMA ALBA
+----------------------------------------------
+
+Copie a pasta do Sistema Alba para um local de sua preferência,
+por exemplo:
+
+    C:\SistemaAlba\
+
+
+----------------------------------------------
+PASSO 3 - INSTALAR AS DEPENDÊNCIAS
+----------------------------------------------
+
+1. Abra o Prompt de Comando como Administrador
+   (clique com o botão direito no Menu Iniciar > Terminal ou
+   Prompt de Comando > "Executar como administrador")
+
+2. Navegue até a pasta do sistema:
+
+    cd C:\SistemaAlba
+
+3. Crie um ambiente virtual:
+
+    python -m venv venv
+
+4. Ative o ambiente virtual:
+
+    venv\Scripts\activate
+
+   O prompt deve mudar para mostrar "(venv)" no início.
+
+5. Instale as dependências:
+
+    pip install -r requirements.txt
+
+   Aguarde o download e instalação dos pacotes.
+
+
+----------------------------------------------
+PASSO 4 - EXECUTAR O SISTEMA
+----------------------------------------------
+
+Com o ambiente virtual ativado (passo 3.4), execute:
+
+    python main.py
+
+O Sistema Alba será iniciado.
+
+
+----------------------------------------------
+PASSO 5 - ATALHO PARA USO DIÁRIO (opcional)
+----------------------------------------------
+
+Para facilitar a abertura do sistema sem precisar do Prompt de
+Comando, crie um arquivo chamado "iniciar.bat" dentro da pasta
+do sistema com o seguinte conteúdo:
+
+    @echo off
+    cd /d "%~dp0"
+    call venv\Scripts\activate
+    python main.py
+
+Dê dois cliques nesse arquivo para iniciar o sistema.
+
+
+----------------------------------------------
+OBSERVAÇÕES
+----------------------------------------------
+
+- O banco de dados fica em: database\alba.db
+  Faça backup regular desse arquivo para não perder seus dados.
+
+- Em caso de erro na ativação do ambiente virtual, execute no
+  PowerShell como Administrador:
+
+    Set-ExecutionPolicy RemoteSigned
+
+  E tente novamente.
+
+==============================================

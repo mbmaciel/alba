@@ -1,7 +1,7 @@
 from cx_Freeze import Executable, setup
 
 # Equivalent to:
-# cxfreeze.exe .\main.py --target-dir .\dist\ --base-name=Win32GUI
+# cxfreeze.exe .\main.py --target-dir .\dist\ --base-name=gui
 build_exe_options = {
     "build_exe": "dist",
     "include_files": [
@@ -17,7 +17,7 @@ setup(
     executables=[
         Executable(
             script="main.py",
-            base="Win32GUI",
+            base="gui",
         )
     ],
 )
