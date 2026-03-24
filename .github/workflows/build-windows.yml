@@ -28,9 +28,17 @@ jobs:
       - name: Build executable
         run: python setup.py build
 
+      - name: List build output
+        shell: pwsh
+        run: Get-ChildItem -Recurse dist
+
+      - name: Create distributable zip
+        shell: pwsh
+        run: Compress-Archive -Path dist -DestinationPath alba-windows.zip -Force
+
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
         with:
           name: alba-windows
-          path: dist
+          path: alba-windows.zip
           if-no-files-found: error

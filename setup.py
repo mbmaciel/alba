@@ -4,6 +4,7 @@ from cx_Freeze import Executable, setup
 # cxfreeze.exe .\main.py --target-dir .\dist\ --base-name=gui
 build_exe_options = {
     "build_exe": "dist",
+    "include_msvcr": True,
     #"include_files": [
     #    ("database/alba.db", "database/alba.db"),
     #],

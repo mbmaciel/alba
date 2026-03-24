@@ -2,6 +2,10 @@ Tornar executável:
 
 $ python .\setup.py build
 
+No Windows, distribua a pasta gerada inteira, não apenas o arquivo `.exe`.
+No workflow do GitHub Actions, o artefato é publicado como um `.zip` justamente
+para preservar todos os arquivos que o executável precisa para abrir.
+
 ## Execução no macOS
 
 No macOS, use um Python com Tk fora do Xcode. A combinação validada neste
